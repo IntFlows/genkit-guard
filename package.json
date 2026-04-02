@@ -1,0 +1,30 @@
+{
+  "name": "@intflows/genkit-guard",
+  "description": "Intflows Genkit Guard",
+  "maintainers": ["Hemant Kohli"],
+  "license": "Apache-2.0",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "models"
+  ],
+  "scripts": {
+    "prepare-models": "node scripts/download-model.js",
+    "build": "npm run prepare-models && tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "genkit": "^0.5.0"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^20.0.0"
+  }
+}
