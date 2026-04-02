@@ -1,97 +1,143 @@
-import { analyzeIntent, detectInjection } from '../intent/intentEngine.js';
-import { createPiiProcessor } from '../pii/piiEngine.js';
+import { analyzeIntentStructured, detectInjection } from '../intent/intentAnalyzer.js';
+import { detectPII } from '../pii/detector.js';
+import { PiiTokenizer } from '../pii/tokenizer.js';
 
-export function intentGuard(config: any) {
+export function guard(config: any) {
   return async (req: any, next: any) => {
-    const text =
+    const input =
       req.prompt ||
       req.messages?.[req.messages.length - 1]?.content?.[0]?.text ||
       "";
 
-    const intentDesc = config.intents[config.allowedIntent];
-
-    const [score, isInjection] = await Promise.all([
-      analyzeIntent(text, intentDesc),
-      detectInjection(text)
-    ]);
-
-    console.log(`[Intent] score=${score.toFixed(3)} injection=${isInjection}`);
+    // -------------------------
+    // 1. INTENT ANALYSIS
+    // -------------------------
+    const isInjection = await detectInjection(input);
 
     if (isInjection) {
-      return block("Prompt injection detected.");
-    }
-
-    if (score < (config.threshold ?? 0.7)) {
-      return block(config.fallbackMessage || "Out of scope.");
-    }
-
-    // 🔒 INTENT LOCKING (IMPORTANT)
-    req.messages = req.messages || [];
-    req.messages.unshift({
-      role: 'system',
-      content: [{
-        text: `You are ONLY allowed to perform this task: ${intentDesc}. If not, refuse.`
-      }]
-    });
-
-    return next(req);
-  };
-}
-
-export function piiGuard() {
-  return async (req: any, next: any) => {
-    const vault = new Map<string, string>();
-    const counter = { value: 0 };
-
-    const processor = await createPiiProcessor();
-
-    const tokenize = async (text: string) =>
-      processor(text, vault, counter);
-
-    const detokenize = (text: string) => {
-      let restored = text;
-      vault.forEach((v, k) => {
-        restored = restored.split(k).join(v);
+      console.warn(`[Intent Guard] Prompt injection pattern detected in input`);
+      return block("Prompt injection detected", {
+      reason: "pattern_match"
       });
-      return restored;
+    }
+
+    console.log(`[Intent Guard] Analyzing intent for input: "${input}"`);
+    
+    const intentResult = await analyzeIntentStructured(
+      input,
+      config.intent.semantic.intents,
+      config.intent.semantic.threshold
+    );
+
+    console.log(`[Intent Guard] Detected intent: ${intentResult.intent} (score: ${intentResult.score.toFixed(2)})`);
+
+    if (!intentResult.allowed) {
+        console.warn(`[Intent Guard] Intent "${intentResult.intent}" not allowed ${intentResult.allowed}`);
+      return block("Intent not allowed", {
+        intent: intentResult.intent,
+        score: intentResult.score
+      });
+    }
+
+    // -------------------------
+    // 2. PII DETECTION + MASKING
+    // -------------------------
+    const piiMatches = await detectPII(input);
+    console.log(`[PII Guard] Detected PII: ${piiMatches.length} matches found`);
+    const tokenizer = new PiiTokenizer();   // <-- SINGLE INSTANCE
+
+    const piiResult = tokenizer.mask(input, piiMatches);
+
+    console.log(`[PII Guard] Masked PII: ${piiResult.piiTypes.length} types found`);
+
+    // Attach tokenizer so response can unmask
+    req.metadata = {
+      ...req.metadata,
+      piiTokenizer: tokenizer,
+      intent: intentResult.intent,
+      score: intentResult.score,
+      piiDetected: piiMatches.length > 0,
+      piiTypes: piiResult.piiTypes,
+      maskedInput: piiResult.maskedText
     };
 
-    // ---- REQUEST MASKING ----
-    if (req.messages) {
-      for (const msg of req.messages) {
-        for (const part of msg.content || []) {
-          if (part.text) {
-            part.text = await tokenize(part.text);
-          }
-        }
-      }
-    }
+    // Replace input
+    req.prompt = piiResult.maskedText;
+    req.messages = [
+      {
+        role: 'user',
+        content: [{ text: piiResult.maskedText }],
+      },
+    ];
 
-    // ---- LLM CALL ----
+    // -------------------------
+    // 3. LLM CALL
+    // -------------------------
     const res = await next(req);
+    
+    // -------------------------
+    // 4. RESPONSE UNMASK
+    // -------------------------
+    console.log(`[PII Guard] Unmasking response if needed`);
 
-    // ---- RESPONSE UNMASK ----
-    if (res.text) {
-      res.text = detokenize(res.text);
+    if (tokenizer) {
+      /**
+       * RECURSIVE TRANSFORMER
+       * This will find every string in the Genkit response (no matter if it's in 
+       * candidates, message, custom, or output) and unmask it.
+       */
+      const transform = (obj: any): any => {
+        // 1. If it's a string, unmask it
+        if (typeof obj === 'string') {
+          return tokenizer.unmask(obj);
+        }
+        
+        // 2. If it's an array, transform each element
+        if (Array.isArray(obj)) {
+          return obj.map(transform);
+        }
+        
+        // 3. If it's an object, transform each value
+        if (obj !== null && typeof obj === 'object') {
+          // Note: We iterate keys and mutate the object directly 
+          // to ensure Genkit's internal references are updated.
+          for (const key of Object.keys(obj)) {
+            obj[key] = transform(obj[key]);
+          }
+          return obj;
+        }
+        
+        // 4. Return as-is for numbers/booleans/null
+        return obj;
+      };
+    
+    // ----------------------------------------------------------------------
+    // 5. Transform the entire response object in-place to unmask all strings
+    // ----------------------------------------------------------------------      
+      transform(res);
+      
+      console.log("[PII Guard] Deep unmasking complete across all candidates and custom fields.");
     }
-
-    if (res.message?.content) {
-      res.message.content.forEach((p: any) => {
-        if (p.text) p.text = detokenize(p.text);
-      });
-    }
+    
+    // ---------------------------------------------------------
+    // 6. Return the modified response with unmasked content
+    // ---------------------------------------------------------
 
     return res;
+
   };
 }
 
-function block(message: string) {
+
+// Helper to create a blocked response
+function block(message: string, metadata?: any) {
   return {
     finishReason: 'blocked',
-    text: message,
-    message: {
-      role: 'model',
-      content: [{ text: message }]
-    }
+    output: {
+      type: "error",
+      status: "BLOCKED",
+      message
+    },
+    metadata
   };
 }

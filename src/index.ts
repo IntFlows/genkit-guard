@@ -1,6 +1,7 @@
 import { ModelSingleton } from './util/singleton.js';
 
-export { intentGuard, piiGuard  } from './middleware/middleware.js';
+// export { intentGuard, piiGuard  } from './middleware/middleware.js';
+export { guard } from './middleware/middleware.js';
 export * from './core/types.js';
 
 /**
