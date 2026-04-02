@@ -11,7 +11,8 @@
   "dist/",
   "src/",
   "README.md",
-  "package.json"
+  "package.json",
+  "scripts/"
   ],
   "scripts": {
     "prepare-models": "node scripts/download-model.js",

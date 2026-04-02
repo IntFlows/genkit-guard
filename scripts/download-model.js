@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { pipeline, env } from '@huggingface/transformers';
 import path from 'path';
 
