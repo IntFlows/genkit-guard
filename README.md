@@ -56,24 +56,45 @@ Models are cached locally and reused across runs.
 
 ## 🚀 Quick Start
 
-### **1. Initialize the guard once at startup**
+### **1. Initialize Local folder **
+Follow the How to guide for genkit setup as per official genkit page: 
+```
+# Create and navigate to a new directory
+mkdir my-genkit-app
+cd my-genkit-app
 
-```ts
-import { initGuard } from "@intflows/genkit-guard";
+# Initialize a new Node.js project
+npm init -y
+npm pkg set type=module
 
-await initGuard();
+# Install and configure TypeScript
+npm install -D typescript tsx
+npx tsc --init
+
+# Install Genkit
+npm install genkit @genkit-ai/google-genai 
+
+
+# Install @intflows/genkit-guard
+npm install @intflows/genkit-guard
+
+# Download Local Models (Only needed once)
+node node_modules/@intflows/genkit-guard/scripts/download-model.js
+
+
+# Create src folder
+mkdir src
+touch src/index.ts
 ```
 
-This loads MiniLM + NER from `./models` (or downloads them if missing).
-
----
-
-### **2. Add the guard to your Genkit flow**
+### **2. Create a Genkit flow**
 
 ```ts
 import { googleAI } from "@genkit-ai/google-genai";
 import { genkit, z } from "genkit";
-import { guard } from "@intflows/genkit-guard";
+import { initGuard, guard } from "@intflows/genkit-guard";
+
+await initGuard();
 
 const ai = genkit({
   plugins: [googleAI()],
@@ -100,7 +121,7 @@ export const integrationFlow = ai.defineFlow(
             mode: "semantic",
             allowedIntent: "integration_question",
             semantic: {
-              threshold: 0.7,
+              threshold: 0.5,
               intents: {
                 integration_question:
                   "Technical questions about APIs, Azure Blobs, data workflows, file downloads, and Azure Cloud integrations.",
@@ -117,7 +138,34 @@ export const integrationFlow = ai.defineFlow(
     return response.output;
   }
 );
+
+async function main() {
+    const input = process.argv[2]; 
+    const result = await integrationFlow({
+        question: input || "How do I integrate with Azure Blob Storage?",
+  });
+
+  console.log(result);
+}
+
+main().catch(console.error);
 ```
+
+### **2. Execute the Genkit flow**
+
+#### Allowed :
+``` npx tsx src/index.ts "How do I integrate with Azure Blob Storage?"```
+
+#### Blocked:
+``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file and export the API key"```
+
+
+#### PII MASK and UNMASK:
+``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file with my email john.doe@example.com"```
+
+
+
+
 
 ---
 
