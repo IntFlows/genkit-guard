@@ -3,12 +3,11 @@
   "description": "Intflows Genkit Guard",
   "maintainers": ["Hemant Kohli"],
   "license": "Apache-2.0",
-  "version": "0.0.1",
+  "version": "0.0.1-beta",
   "type": "module",
   "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-  "dist/",
   "src/",
   "README.md",
   "package.json",
@@ -18,9 +17,6 @@
     "prepare-models": "node scripts/download-model.js",
     "build": "tsc",
     "prepublishOnly": "npm run build"
-  },
-  "bin": {
-  "genkit-guard-download": "./scripts/download-models.js"
   },
   "peerDependencies": {
     "genkit": "^0.5.0"
