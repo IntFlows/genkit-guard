@@ -121,7 +121,7 @@ export const integrationFlow = ai.defineFlow(
             mode: "semantic",
             allowedIntent: "integration_question",
             semantic: {
-              threshold: 0.7,
+              threshold: 0.5,
               intents: {
                 integration_question:
                   "Technical questions about APIs, Azure Blobs, data workflows, file downloads, and Azure Cloud integrations.",
