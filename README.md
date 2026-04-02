@@ -263,7 +263,3 @@ We plan to add Auth and Tool Middleware in further stages
 # 📄 License
 
 Apache‑2.0
-
-# Keywords
-
-Genkit 
