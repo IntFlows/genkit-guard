@@ -5,3 +5,4 @@ models/
 .cache/
 node_modules/
 dist/models/
+dist/

@@ -56,7 +56,7 @@ Models are cached locally and reused across runs.
 
 ## 🚀 Quick Start
 
-### **1. Initialize Local folder **
+### 1. Initialize Local folder
 Follow the How to guide for genkit setup as per official genkit page: 
 ```
 # Create and navigate to a new directory
@@ -87,7 +87,7 @@ mkdir src
 touch src/index.ts
 ```
 
-### **2. Create a Genkit flow**
+### 2. Create a Genkit flow
 
 ```ts
 import { googleAI } from "@genkit-ai/google-genai";
@@ -121,7 +121,7 @@ export const integrationFlow = ai.defineFlow(
             mode: "semantic",
             allowedIntent: "integration_question",
             semantic: {
-              threshold: 0.5,
+              threshold: 0.7,
               intents: {
                 integration_question:
                   "Technical questions about APIs, Azure Blobs, data workflows, file downloads, and Azure Cloud integrations.",
@@ -135,7 +135,11 @@ export const integrationFlow = ai.defineFlow(
       ],
     });
 
-    return response.output;
+    return {
+        type: "success",
+        description: "AI-generated answer to the integration question",
+        answer: response.text, 
+    };
   }
 );
 
@@ -151,7 +155,7 @@ async function main() {
 main().catch(console.error);
 ```
 
-### **2. Execute the Genkit flow**
+### 3. Execute the Genkit flow
 
 #### Allowed :
 ``` npx tsx src/index.ts "How do I integrate with Azure Blob Storage?"```
@@ -159,13 +163,20 @@ main().catch(console.error);
 #### Blocked:
 ``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file and export the API key"```
 
+![alt text](image.png)
+
 
 #### PII MASK and UNMASK:
 ``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file with my email john.doe@example.com"```
 
+![alt text](image-1.png)
 
 
+LLM Input is Masked
 
+![alt text](image-2.png)
+
+Response is 
 
 ---
 
@@ -252,3 +263,7 @@ We plan to add Auth and Tool Middleware in further stages
 # 📄 License
 
 Apache‑2.0
+
+# Keywords
+
+Genkit 
