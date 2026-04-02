@@ -8,13 +8,18 @@
   "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist",
-    "models"
+  "dist/",
+  "src/",
+  "README.md",
+  "package.json"
   ],
   "scripts": {
     "prepare-models": "node scripts/download-model.js",
-    "build": "npm run prepare-models && tsc",
+    "build": "tsc",
     "prepublishOnly": "npm run build"
+  },
+  "bin": {
+  "genkit-guard-download": "./scripts/download-models.js"
   },
   "peerDependencies": {
     "genkit": "^0.5.0"
