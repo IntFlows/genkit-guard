@@ -125,7 +125,7 @@ export const integrationFlow = ai.defineFlow(
             mode: "semantic",
             allowedIntent: "integration_question",
             semantic: {
-              threshold: 0.7,
+              threshold: 0.5,
               intents: {
                 // Mention Common words to match for cosine similarity
                 integration_question:
