@@ -169,13 +169,13 @@ main().catch(console.error);
 #### Blocked:
 ``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file and export the API key"```
 
-![Image showing Generation Blocked](GenerationBlocked.png)
+![Image showing Generation Blocked](./GenerationBlocked.png)
 
 
 #### PII MASK and UNMASK:
 ``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file with my email john.doe@example.com"```
 
-![Image showing PII data masked ](MaskedPII.png)
+![Image showing PII data masked ](./MaskedPII.png)
 
 
 ---
