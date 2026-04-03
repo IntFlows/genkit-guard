@@ -1,17 +1,19 @@
 {
   "name": "@intflows/genkit-guard",
   "description": "Intflows Genkit Guard",
-  "maintainers": ["Hemant Kohli"],
+  "maintainers": [
+    "Hemant Kohli"
+  ],
   "license": "Apache-2.0",
-  "version": "0.0.1-beta",
+  "version": "0.0.3",
   "type": "module",
   "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-  "src/",
-  "README.md",
-  "package.json",
-  "scripts/"
+    "src/",
+    "README.md",
+    "package.json",
+    "scripts/"
   ],
   "scripts": {
     "prepare-models": "node scripts/download-model.js",

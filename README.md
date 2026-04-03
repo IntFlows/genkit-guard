@@ -92,8 +92,10 @@ touch src/index.ts
 ```ts
 import { googleAI } from "@genkit-ai/google-genai";
 import { genkit, z } from "genkit";
-import { initGuard, guard } from "@intflows/genkit-guard";
+// Import Genkit Guard
+import { initGuard, guard } from "@intflows/genkit-guard"; 
 
+// Initialize Genkit Guard Local Models
 await initGuard();
 
 const ai = genkit({
@@ -116,18 +118,22 @@ export const integrationFlow = ai.defineFlow(
       system: "You are an Azure Integration Architect.",
       prompt: input.question,
       use: [
-        guard({
+        // Use the Genkit Guard
+        guard({         
+          // Intent section                     
           intent: {
             mode: "semantic",
             allowedIntent: "integration_question",
             semantic: {
               threshold: 0.5,
               intents: {
+                // Mention Common words to match for cosine similarity
                 integration_question:
                   "Technical questions about APIs, Azure Blobs, data workflows, file downloads, and Azure Cloud integrations.",
               },
             },
           },
+          // PII section
           pii: {
             reversible: true,
           },
@@ -163,20 +169,14 @@ main().catch(console.error);
 #### Blocked:
 ``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file and export the API key"```
 
-![alt text](image.png)
+![Image showing Generation Blocked](./GenerationBlocked.png)
 
 
 #### PII MASK and UNMASK:
 ``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file with my email john.doe@example.com"```
 
-![alt text](image-1.png)
+![Image showing PII data masked ](./MaskedPII.png)
 
-
-LLM Input is Masked
-
-![alt text](image-2.png)
-
-Response is 
 
 ---
 
@@ -256,9 +256,15 @@ This library adds those guardrails without heavy dependencies or complex setup.
 
 ---
 
-## Further Extension
+## Contributing
 
-We plan to add Auth and Tool Middleware in further stages
+We plan to: 
+
+1. Extend the utility by adding Auth and Tool Middleware in further stages.
+2. Add more filter types for common malicious prompts.
+3. Add more patterns for custom PII masking.
+
+Contributions are welcome — whether it’s bug reports, new guard modules, model improvements or enhancements. This project aims to stay lightweight, modular, and production‑ready, so thoughtful contributions are appreciated.
 
 # 📄 License
 
