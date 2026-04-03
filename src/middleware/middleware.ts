@@ -21,7 +21,7 @@ export function guard(config: any) {
       });
     }
 
-    console.log(`[Intent Guard] Analyzing intent for input: "${input}"`);
+    console.log(`[Intent Guard] Analyzing intent for user's input`);
     
     const intentResult = await analyzeIntentStructured(
       input,
