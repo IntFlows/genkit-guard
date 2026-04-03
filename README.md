@@ -39,11 +39,14 @@ npm install @intflows/genkit-guard
 ```
 
 This library uses lightweight transformer models (MiniLM + BERT‑NER).  
+
 Download them once. 
+
 ```bash
 ## Download the transformer models (MiniLM + BERT‑NER)
 node node_modules/@intflows/genkit-guard/scripts/download-model.js
 ```
+
 Models are cached locally and reused across runs.
 
 ---
@@ -53,107 +56,43 @@ Models are cached locally and reused across runs.
 ### 1. Initialize Local folder
 
 ```bash
-# Create and navigate to a new directory
-mkdir my-genkit-app
-cd my-genkit-app
-
-# Initialize a new Node.js project
-npm init -y
-npm pkg set type=module
-
-# Install and configure TypeScript
-npm install -D typescript tsx
-npx tsc --init
-
-# Install Genkit
-npm install genkit @genkit-ai/google-genai 
-
-
 # Install @intflows/genkit-guard
 npm install @intflows/genkit-guard
 
 # Download Local Models (Only needed once)
 node node_modules/@intflows/genkit-guard/scripts/download-model.js
-
-
-# Create src folder
-mkdir src
-touch src/index.ts
 ```
 
-### 2. Create a Genkit flow
+### 2. Update genkit
 
 ```ts
-import { googleAI } from "@genkit-ai/google-genai";
-import { genkit, z } from "genkit";
-// Import Genkit Guard
-import { initGuard, guard } from "@intflows/genkit-guard"; 
+import { guard, initGuard } from "@intflows/genkit-guard";
 
-// Initialize Genkit Guard Local Models
 await initGuard();
 
-const ai = genkit({
-  plugins: [googleAI()],
-  model: googleAI.model("gemini-2.5-flash"),
+const response = await ai.generate({
+  prompt: "How do I integrate with Azure Blob Storage?",
+  use: [
+    guard({
+      intent: {
+        mode: "semantic",
+        allowedIntent: "integration",
+        semantic: {
+          threshold: 0.7,
+          intents: {
+            integration: "Azure Blob, APIs, workflows"
+          }
+        }
+      },
+      pii: { reversible: true }
+    })
+  ]
 });
-
-export const integrationFlow = ai.defineFlow(
-  {
-    name: "integrationFlow",
-    inputSchema: z.object({ question: z.string() }),
-    outputSchema: z.object({
-      type: z.literal("success"),
-      description: z.string(),
-      answer: z.string(),
-    }),
-  },
-  async (input) => {
-    const response = await ai.generate({
-      system: "You are an Azure Integration Architect.",
-      prompt: input.question,
-      use: [
-        // Use the Genkit Guard
-        guard({         
-          // Intent section                     
-          intent: {
-            mode: "semantic",
-            allowedIntent: "integration_question",
-            semantic: {
-              threshold: 0.5,
-              intents: {
-                // Mention Common words to match for cosine similarity
-                integration_question:
-                  "Technical questions about APIs, Azure Blobs, data workflows, file downloads, and Azure Cloud integrations.",
-              },
-            },
-          },
-          // PII section
-          pii: {
-            reversible: true,
-          },
-        }),
-      ],
-    });
-
-    return {
-        type: "success",
-        description: "AI-generated answer to the integration question",
-        answer: response.text, 
-    };
-  }
-);
-
-async function main() {
-    const input = process.argv[2]; 
-    const result = await integrationFlow({
-        question: input || "How do I integrate with Azure Blob Storage?",
-  });
-
-  console.log(result);
-}
-
-main().catch(console.error);
 ```
+
+**You Can also check the full step by step guide here:**
+
+[Intflows Wiki](https://github.com/IntFlows/genkit-guard/wiki)
 
 ### 3. Execute the Genkit flow
 
