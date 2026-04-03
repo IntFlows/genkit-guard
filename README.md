@@ -34,22 +34,16 @@ This library is designed for developers who want **practical, production‑ready
 ### 📦 Installation
 
 ```bash
+## Install the package
 npm install @intflows/genkit-guard
 ```
 
 This library uses lightweight transformer models (MiniLM + BERT‑NER).  
-Download them once:
-
+Download them once. 
 ```bash
-npx genkit-guard-download
+## Download the transformer models (MiniLM + BERT‑NER)
+node node_modules/@intflows/genkit-guard/scripts/download-model.js
 ```
-
-This creates:
-
-```
-./models/
-```
-
 Models are cached locally and reused across runs.
 
 ---
@@ -57,8 +51,8 @@ Models are cached locally and reused across runs.
 ## 🚀 Quick Start
 
 ### 1. Initialize Local folder
-Follow the How to guide for genkit setup as per official genkit page: 
-```
+
+```bash
 # Create and navigate to a new directory
 mkdir my-genkit-app
 cd my-genkit-app
@@ -176,7 +170,6 @@ main().catch(console.error);
 ``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file with my email john.doe@example.com"```
 
 ![Image showing PII data masked ](./MaskedPII.png)
-
 
 ---
 
