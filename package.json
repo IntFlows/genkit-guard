@@ -13,9 +13,7 @@
     "src/",
     "README.md",
     "package.json",
-    "scripts/",
-    "GenerationBlocked.png",
-    "MaskedPII.png"
+    "scripts/"
   ],
   "scripts": {
     "prepare-models": "node scripts/download-model.js",
