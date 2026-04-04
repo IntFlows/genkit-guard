@@ -21,7 +21,7 @@
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "genkit": "^0.5.0"
+    "genkit": ">=0.5.0"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.0.0",
