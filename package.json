@@ -4,6 +4,19 @@
   "maintainers": [
     "Hemant Kohli"
   ],
+  "keywords": [
+    "genkit",
+    "genkit-guard",
+    "intflows",
+    "guardrails",
+    "intent-analysis",
+    "AI-safety",
+    "piimasking",
+    "content-moderation",
+    "NLP",
+    "transformers",
+    "huggingface"
+  ],
   "license": "Apache-2.0",
   "version": "0.0.7",
   "type": "module",
