@@ -42,8 +42,12 @@ export function guard(config: any) {
     // -------------------------
     // 2. PII DETECTION + MASKING
     // -------------------------
-    const piiMatches = await detectPII(input);
-    console.log(`[PII Guard] Detected PII: ${piiMatches.length} matches found`);
+    const piiResponse = await detectPII(input, {
+      model: config?.pii?.model,
+      mode: config?.pii?.mode
+    });
+    const piiMatches = piiResponse?.matches || [];
+    console.log(`[PII Guard] Detected PII: ${piiMatches.length} matches found` + (piiResponse.classifier ? ' (classifier output present)' : ''));
     const tokenizer = new PiiTokenizer();   // <-- SINGLE INSTANCE
 
     const piiResult = tokenizer.mask(input, piiMatches);
@@ -58,7 +62,10 @@ export function guard(config: any) {
       score: intentResult.score,
       piiDetected: piiMatches.length > 0,
       piiTypes: piiResult.piiTypes,
-      maskedInput: piiResult.maskedText
+      maskedInput: piiResult.maskedText,
+      piiModel: config?.pii?.model,
+      piiMode: config?.pii?.mode,
+      piiClassifierOutput: piiResponse.classifier
     };
 
     // Replace input

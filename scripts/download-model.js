@@ -13,9 +13,14 @@ async function download() {
   await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
     device: 'cpu'
   });
-  console.log('Downloading BERT-NER to ./models...');
-  await pipeline('token-classification', 'Xenova/bert-base-NER', {
-    device: 'cpu'
+  //console.log('Downloading BERT-NER to ./models...');
+  // await pipeline('token-classification', 'Xenova/bert-base-NER', {
+  //   device: 'cpu'
+  // });
+  
+  console.log('Downloading openai/privacy-filter to ./models...');
+  await pipeline('token-classification', 'openai/privacy-filter', {
+    device: 'cpu', dtype: "q4"
   });
   console.log('Model downloaded successfully.');
 }
