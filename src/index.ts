@@ -1,3 +1,4 @@
+import { createLogger } from './logging/logger.js';
 import { ModelSingleton } from './util/singleton.js';
 
 // export { intentGuard, piiGuard  } from './middleware/middleware.js';
@@ -8,7 +9,13 @@ export * from './core/types.js';
  * Pre-load the model to avoid cold-start delay on first user request.
  */
 export async function initGuard(config?: any) {
-  console.log('[Guard] Loading local models...');
+  const log = createLogger(config?.logging);
+
+  log({
+    level: 'info',
+    event: 'guard.models.loading_started',
+    message: 'Loading local models'
+  });
 
   const extractorModel = config?.models?.extractor ?? 'Xenova/all-MiniLM-L6-v2';
   const piiModel = config?.pii?.model;
@@ -23,5 +30,9 @@ export async function initGuard(config?: any) {
   }
 
   await Promise.all(tasks);
-  console.log('[Guard] Models loaded');
+  log({
+    level: 'info',
+    event: 'guard.models.loading_completed',
+    message: 'Models loaded'
+  });
 }

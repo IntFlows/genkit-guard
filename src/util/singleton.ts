@@ -2,6 +2,7 @@ import { pipeline, env, type FeatureExtractionPipeline } from '@huggingface/tran
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { createLogger } from '../logging/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,7 +30,11 @@ export class ModelSingleton {
     // Allow remote download if missing
     env.allowRemoteModels = true;
 
-    console.log("[Guard] Using model directory:", modelPath);
+    createLogger()({
+      level: 'info',
+      event: 'guard.models.directory_configured',
+      modelPath
+    });
   }
 
   static async getExtractor(modelName: string = 'Xenova/all-MiniLM-L6-v2') {

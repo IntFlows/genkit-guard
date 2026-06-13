@@ -23,13 +23,19 @@ This library is designed for developers who want **practical, production‑ready
 - **Automatic Unmasking**  
   Restores original PII in the model’s response, even inside structured JSON.
 
+- **Tool Call PII Middleware**  
+  Detects PII tokens in model-generated tool calls, unmasks only the tool input payload, and records metadata so the model continues to see masked values.
+
 - **Prompt Injection Detection**  
   Blocks jailbreak attempts using pattern‑based heuristics.
 
 - **Model‑Light Architecture**  
   The package uses local `all-MiniLM-L6-v2` and `openai/privacy-filter` Models, these Models are downloaded once and cached locally.
 
-- **Drop‑in Genkit Middleware**  
+- **Structured Enterprise Logging**  
+  Emits JSON log events with timestamps, levels, service names, and guardrail metadata without logging raw prompt or PII values.
+
+- **Drop-in Genkit Middleware**  
   Works with `ai.generate`, `ai.generateStream`, and Genkit flows.
 
 ---
@@ -88,7 +94,10 @@ const response = await ai.generate({
           }
         }
       },
-      pii: { reversible: true }
+      pii: { reversible: true },
+      logging: {
+        service: "workflow-api"
+      }
     })
   ]
 });
@@ -149,6 +158,50 @@ After the LLM responds:
 
 ```
 "Send a confirmation email to [[EMAIL_0]]" → "Send a confirmation email to john.doe@example.com"
+```
+
+### **5. Tool Call Protection**
+When the model emits a tool request with masked PII tokens, the guard unmasks only the tool input fields (`input`, `args`, or `arguments`) before the tool runs. Tool-call metadata is attached under `metadata.piiGuard.toolCalls`.
+
+This lets a tool receive required real values, such as an email address, while subsequent model-bound messages are masked again by the guard.
+
+```json
+{
+  "path": "$.candidates[0].message.content[0].toolRequest",
+  "toolName": "sendEmail",
+  "piiDetected": true,
+  "piiTokenCount": 1,
+  "piiTypes": ["email"]
+}
+```
+
+### **6. JSON Logging**
+Logs are emitted as one JSON object per line by default:
+
+```json
+{"timestamp":"2026-06-13T08:00:00.000Z","service":"workflow-api","level":"warn","event":"guard.tool_calls.scanned","toolCallCount":1,"toolCallsWithPii":1,"piiTypes":["email"]}
+```
+
+You can disable logging or plug in your own logger:
+
+```ts
+guard({
+  intent: {
+    mode: "semantic",
+    semantic: {
+      threshold: 0.7,
+      intents: {
+        integration: "Azure Blob, APIs, workflows"
+      }
+    }
+  },
+  pii: { reversible: true },
+  logging: {
+    enabled: true,
+    service: "workflow-api",
+    logger: event => myEnterpriseLogger.info(event)
+  }
+})
 ```
 ---
 

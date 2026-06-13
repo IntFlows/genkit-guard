@@ -1,13 +1,20 @@
+import type { GuardConfig } from '../core/types.js';
 import { analyzeIntentStructured, detectInjection } from '../intent/intentAnalyzer.js';
+import { createLogger } from '../logging/logger.js';
 import { detectPII } from '../pii/detector.js';
 import { PiiTokenizer } from '../pii/tokenizer.js';
+import { collectText, transformStrings } from './objectTransforms.js';
+import { containsToolCalls, unmaskToolCallInputs } from './toolCalls.js';
 
-export function guard(config: any) {
+export function guard(config: GuardConfig) {
+  const log = createLogger(config?.logging);
+
   return async (req: any, next: any) => {
     const input =
       req.prompt ||
       req.messages?.[req.messages.length - 1]?.content?.[0]?.text ||
-      "";
+      collectText(req.messages) ||
+      '';
 
     // -------------------------
     // 1. INTENT ANALYSIS
@@ -15,13 +22,21 @@ export function guard(config: any) {
     const isInjection = await detectInjection(input);
 
     if (isInjection) {
-      console.warn(`[Intent Guard] Prompt injection pattern detected in input`);
+      log({
+        level: 'warn',
+        event: 'guard.intent.injection_detected',
+        message: 'Prompt injection pattern detected'
+      });
       return block("Prompt injection detected", {
       reason: "pattern_match"
       });
     }
 
-    console.log(`[Intent Guard] Analyzing intent for user's input`);
+    log({
+      level: 'info',
+      event: 'guard.intent.analysis_started',
+      message: 'Analyzing user intent'
+    });
     
     const intentResult = await analyzeIntentStructured(
       input,
@@ -29,10 +44,21 @@ export function guard(config: any) {
       config.intent.semantic.threshold
     );
 
-    console.log(`[Intent Guard] Detected intent: ${intentResult.intent} (score: ${intentResult.score.toFixed(2)})`);
+    log({
+      level: 'info',
+      event: 'guard.intent.analysis_completed',
+      intent: intentResult.intent,
+      score: Number(intentResult.score.toFixed(4)),
+      allowed: intentResult.allowed
+    });
 
     if (!intentResult.allowed) {
-        console.warn(`[Intent Guard] Intent "${intentResult.intent}" not allowed ${intentResult.allowed}`);
+      log({
+        level: 'warn',
+        event: 'guard.intent.blocked',
+        intent: intentResult.intent,
+        score: Number(intentResult.score.toFixed(4))
+      });
       return block("Intent not allowed", {
         intent: intentResult.intent,
         score: intentResult.score
@@ -47,12 +73,23 @@ export function guard(config: any) {
       mode: config?.pii?.mode
     });
     const piiMatches = piiResponse?.matches || [];
-    console.log(`[PII Guard] Detected PII: ${piiMatches.length} matches found` + (piiResponse.classifier ? ' (classifier output present)' : ''));
+    log({
+      level: piiMatches.length > 0 ? 'warn' : 'info',
+      event: 'guard.pii.detected',
+      matchCount: piiMatches.length,
+      classifierOutputPresent: Boolean(piiResponse.classifier)
+    });
     const tokenizer = new PiiTokenizer();   // <-- SINGLE INSTANCE
 
     const piiResult = tokenizer.mask(input, piiMatches);
 
-    console.log(`[PII Guard] Masked PII: ${piiResult.piiTypes.length} types found`);
+    log({
+      level: 'info',
+      event: 'guard.pii.masked',
+      piiDetected: piiMatches.length > 0,
+      piiTypes: piiResult.piiTypes,
+      piiTypeCount: piiResult.piiTypes.length
+    });
 
     // Attach tokenizer so response can unmask
     req.metadata = {
@@ -68,14 +105,21 @@ export function guard(config: any) {
       piiClassifierOutput: piiResponse.classifier
     };
 
-    // Replace input
-    req.prompt = piiResult.maskedText;
-    req.messages = [
-      {
-        role: 'user',
-        content: [{ text: piiResult.maskedText }],
-      },
-    ];
+    // Replace user-facing prompt fields while preserving existing message shape.
+    if (typeof req.prompt === 'string') {
+      req.prompt = tokenizer.mask(req.prompt, piiMatches).maskedText;
+    }
+
+    if (req.messages) {
+      req.messages = transformStrings(req.messages, text => tokenizer.mask(text, piiMatches).maskedText);
+    } else {
+      req.messages = [
+        {
+          role: 'user',
+          content: [{ text: piiResult.maskedText }],
+        },
+      ];
+    }
 
     // -------------------------
     // 3. LLM CALL
@@ -85,45 +129,43 @@ export function guard(config: any) {
     // -------------------------
     // 4. RESPONSE UNMASK
     // -------------------------
-    console.log(`[PII Guard] Unmasking response if needed`);
+    log({
+      level: 'info',
+      event: 'guard.response.received',
+      containsToolCalls: containsToolCalls(res)
+    });
 
     if (tokenizer) {
-      /**
-       * RECURSIVE TRANSFORMER
-       * This will find every string in the Genkit response (no matter if it's in 
-       * candidates, message, custom, or output) and unmask it.
-       */
-      const transform = (obj: any): any => {
-        // 1. If it's a string, unmask it
-        if (typeof obj === 'string') {
-          return tokenizer.unmask(obj);
-        }
-        
-        // 2. If it's an array, transform each element
-        if (Array.isArray(obj)) {
-          return obj.map(transform);
-        }
-        
-        // 3. If it's an object, transform each value
-        if (obj !== null && typeof obj === 'object') {
-          // Note: We iterate keys and mutate the object directly 
-          // to ensure Genkit's internal references are updated.
-          for (const key of Object.keys(obj)) {
-            obj[key] = transform(obj[key]);
+      const hasToolCalls = containsToolCalls(res);
+
+      if (hasToolCalls) {
+        const toolResult = unmaskToolCallInputs(res, tokenizer);
+        const toolCallsWithPii = toolResult.toolCalls.filter(toolCall => toolCall.piiDetected);
+
+        res.metadata = {
+          ...res.metadata,
+          piiGuard: {
+            ...res.metadata?.piiGuard,
+            toolCalls: toolResult.toolCalls
           }
-          return obj;
-        }
+        };
+
+        log({
+          level: toolCallsWithPii.length > 0 ? 'warn' : 'info',
+          event: 'guard.tool_calls.scanned',
+          toolCallCount: toolResult.toolCalls.length,
+          toolCallsWithPii: toolCallsWithPii.length,
+          piiTypes: Array.from(new Set(toolCallsWithPii.flatMap(toolCall => toolCall.piiTypes)))
+        });
+      } else {
+        transformStrings(res, text => tokenizer.unmask(text));
         
-        // 4. Return as-is for numbers/booleans/null
-        return obj;
-      };
-    
-    // ----------------------------------------------------------------------
-    // 5. Transform the entire response object in-place to unmask all strings
-    // ----------------------------------------------------------------------      
-      transform(res);
-      
-      console.log("[PII Guard] Deep unmasking complete across all candidates and custom fields.");
+        log({
+          level: 'info',
+          event: 'guard.response.unmasked',
+          message: 'Deep unmasking complete across response fields'
+        });
+      }
     }
     
     // ---------------------------------------------------------

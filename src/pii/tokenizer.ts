@@ -13,13 +13,27 @@ export class PiiTokenizer {
     return `[[${type}_${this.counter++}]]`;
   }
 
+  private getOrCreateToken(type: string, value: string) {
+    for (const [token, tokenValue] of this.vault.entries()) {
+      if (tokenValue === value) {
+        return token;
+      }
+    }
+
+    const token = this.createToken(type);
+    this.vault.set(token, value);
+    return token;
+  }
+
   mask(text: string, matches: { type: string; value: string }[]): PiiResult {
     let masked = text;
 
     for (const match of matches) {
-      const token = this.createToken(match.type);
+      if (!match.value || !masked.includes(match.value)) {
+        continue;
+      }
 
-      this.vault.set(token, match.value);
+      const token = this.getOrCreateToken(match.type, match.value);
       this.piiTypes.add(match.type.toLowerCase());
 
       masked = masked.split(match.value).join(token);

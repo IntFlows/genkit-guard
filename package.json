@@ -35,6 +35,7 @@
   "scripts": {
     "prepare-models": "node scripts/download-model.js",
     "build": "tsc",
+    "test": "npm run build && node tests/run-tests.mjs",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
