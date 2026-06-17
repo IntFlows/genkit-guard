@@ -1,4 +1,7 @@
-# **@intflows/genkit-guard**  
+# **@intflows/genkit-guard** 
+
+#### _This version uses OpenAI/privacy-filter instead of bert-base-NER_
+
 ### **Lightweight Intent, PII, and Safety Guardrails for Genkit**
 
 `@intflows/genkit-guard` provides a modular guardrail layer for Genkit flows.  
@@ -24,7 +27,7 @@ This library is designed for developers who want **practical, production‑ready
   Blocks jailbreak attempts using pattern‑based heuristics.
 
 - **Model‑Light Architecture**  
-  The package uses local `all-MiniLM-L6-v2` and `bert-base-NER` Models, these Models are downloaded once and cached locally.
+  The package uses local `all-MiniLM-L6-v2` and `openai/privacy-filter` Models, these Models are downloaded once and cached locally.
 
 - **Drop‑in Genkit Middleware**  
   Works with `ai.generate`, `ai.generateStream`, and Genkit flows.
@@ -38,12 +41,12 @@ This library is designed for developers who want **practical, production‑ready
 npm install @intflows/genkit-guard
 ```
 
-This library uses lightweight transformer models (MiniLM + BERT‑NER).  
+This library uses lightweight transformer models (MiniLM + Openai/privacy-filter).  
 
 Download them once. 
 
 ```bash
-## Download the transformer models (MiniLM + BERT‑NER)
+## Download the transformer models (MiniLM + OpenAI/privacy-filter)
 node node_modules/@intflows/genkit-guard/scripts/download-model.js
 ```
 
@@ -62,6 +65,7 @@ npm install @intflows/genkit-guard
 # Download Local Models (Only needed once)
 node node_modules/@intflows/genkit-guard/scripts/download-model.js
 ```
+_ This downloads the models to ./models folder, the total size is ~1.5 GB ( 1GB for Openai/privacy-filter + .5 GB for MiniLM-L6-v2) 
 
 ### 2. Update genkit
 
@@ -133,9 +137,9 @@ Before the LLM sees the prompt:
 Detected PII includes:
 
 - Emails  
-- Phone numbers  
-- Names (NER)  
+- Phone numbers    
 - AU identifiers (Medicare, TFN, ABN, etc.)
+- PII detected by local Model (OpenAI/privacy-filter)
 
 ### **3. LLM Call**
 The masked prompt is sent to the model.

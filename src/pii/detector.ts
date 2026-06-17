@@ -23,25 +23,37 @@ const REGEX_RULES = [
   { type: 'CREDIT_CARD', pattern: /\b(?:\d[ -]*?){13,16}\b/g }
 ];
 
-export async function detectPII(text: string) {
-  const ner = await ModelSingleton.getNER();
+export async function detectPII(text: string, opts?: { model?: string; mode?: 'ner' | 'classifier' }) {
+  const mode = opts?.mode ?? 'ner';
+  const model = opts?.model;
 
   const results: { type: string; value: string }[] = [];
 
-  // ---- NER ----
-  const entities = await ner(text);
-
-  for (const e of entities) {
-    if (e.entity.includes('PER')) {
-      results.push({ type: 'NAME', value: e.word.replace('##', '') });
-    }
-  }
-
-  // ---- REGEX ----
+  // ---- REGEX (always run) ----
   for (const rule of REGEX_RULES) {
     const matches = text.match(rule.pattern) || [];
     matches.forEach(m => results.push({ type: rule.type, value: m }));
   }
 
-  return results;
+  // ---- NER ----
+  let classifierOutput: any = undefined;
+  if (mode === 'ner') {
+    const ner = await ModelSingleton.getNER(model);
+    const entities = await ner(text);
+
+    for (const e of entities) {
+      if (e.entity && e.entity.includes('PER')) {
+        results.push({ type: 'NAME', value: (e.word || '').replace(/##/g, '') });
+      }
+    }
+  } else {
+    // classifier mode: we call the classifier and return its output alongside regex matches.
+    const cls = await ModelSingleton.getPIIClassifier(model);
+    classifierOutput = await cls(text);
+  }
+
+  return {
+    matches: results,
+    classifier: classifierOutput
+  };
 }
