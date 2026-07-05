@@ -46,9 +46,8 @@ export const guardMiddleware = generateMiddleware(
 );
 
 export const guardPlugin = guardMiddleware.plugin;
-export const guard = guardMiddleware;
 
-export function guardAction(config?: GuardConfig) {
+export function guard(config?: GuardConfig) {
   const hooks = createGuardHooks(config);
   const baseMiddleware = guardMiddleware(config);
 
@@ -75,6 +74,8 @@ export function guardAction(config?: GuardConfig) {
 
   return fnRunner;
 }
+
+export const guardAction = guard;
 
 function createGuardHooks(config?: GuardConfig) {
   const logger = createLogger(config);

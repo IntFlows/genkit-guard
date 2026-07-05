@@ -1,0 +1,22 @@
+{
+  "name": "my-genkit-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "@genkit-ai/google-genai": "1.39.0",
+    "genkit": "1.39.0",
+    "@intflows/genkit-guard": "0.0.9-alpha.1"
+  }
+}
