@@ -119,7 +119,7 @@ An example genkit flow is present in `example-flow` directory.
 
 ```bash
 git clone https://github.com/IntFlows/genkit-guard.git
-cd genkit-guard/example-flow
+cd genkit-guard/example
 npm install
 npx tsx src/index.ts
 ```
@@ -128,7 +128,7 @@ Or you can run the flow with genkit dev UI
 
 ```bash
 git clone https://github.com/IntFlows/genkit-guard.git
-cd genkit-guard/example-flow
+cd genkit-guard/example
 npm install
 genkit start -- npx tsx src/index.ts
 ```
