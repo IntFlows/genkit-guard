@@ -29,7 +29,22 @@ export class ModelSingleton {
     // Allow remote download if missing
     env.allowRemoteModels = true;
 
-    console.log("[Guard] Using model directory:", modelPath);
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      severityText: 'INFO',
+      severityNumber: 9,
+      body: 'Using guard model directory',
+      resource: {
+        attributes: {
+          'service.name': '@intflows/genkit-guard',
+        },
+      },
+      attributes: {
+        'event.name': 'guard.models.directory',
+        'code.namespace': 'genkit-guard',
+        modelPath,
+      },
+    }));
   }
 
   static async getExtractor(modelName: string = 'Xenova/all-MiniLM-L6-v2') {

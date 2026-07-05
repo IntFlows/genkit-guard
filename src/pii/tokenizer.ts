@@ -6,6 +6,7 @@ export type PiiResult = {
 
 export class PiiTokenizer {
   private vault = new Map<string, string>();
+  private valueToToken = new Map<string, string>();
   private counter = 0;
   private piiTypes = new Set<string>();
 
@@ -17,9 +18,19 @@ export class PiiTokenizer {
     let masked = text;
 
     for (const match of matches) {
-      const token = this.createToken(match.type);
+      if (!masked.includes(match.value)) {
+        continue;
+      }
 
-      this.vault.set(token, match.value);
+      const key = `${match.type}:${match.value}`;
+      let token = this.valueToToken.get(key);
+
+      if (!token) {
+        token = this.createToken(match.type);
+        this.valueToToken.set(key, token);
+        this.vault.set(token, match.value);
+      }
+
       this.piiTypes.add(match.type.toLowerCase());
 
       masked = masked.split(match.value).join(token);

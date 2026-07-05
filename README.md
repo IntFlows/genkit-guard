@@ -1,7 +1,5 @@
 # **@intflows/genkit-guard** 
 
-#### _This version uses OpenAI/privacy-filter instead of bert-base-NER_
-
 ### **Lightweight Intent, PII, and Safety Guardrails for Genkit**
 
 `@intflows/genkit-guard` provides a modular guardrail layer for Genkit flows.  
@@ -113,6 +111,27 @@ const response = await ai.generate({
 ``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file with my email john.doe@example.com"```
 
 ![Image showing PII data masked ](./MaskedPII.png)
+
+---
+## Example
+
+An example genkit flow is present in `example` directory.
+
+```bash
+git clone https://github.com/IntFlows/genkit-guard.git
+cd genkit-guard/example
+npm install
+npx tsx src/index.ts
+```
+
+Or you can run the flow with genkit dev UI
+
+```bash
+git clone https://github.com/IntFlows/genkit-guard.git
+cd genkit-guard/example
+npm install
+genkit start -- npx tsx src/index.ts
+```
 
 ---
 
