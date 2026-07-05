@@ -113,7 +113,7 @@ const response = await ai.generate({
 ![Image showing PII data masked ](./MaskedPII.png)
 
 ---
-## Example Flow
+## Example
 
 An example genkit flow is present in `example` directory.
 
