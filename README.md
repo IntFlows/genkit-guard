@@ -115,7 +115,7 @@ const response = await ai.generate({
 ---
 ## Example Flow
 
-An example genkit flow is present in `example-flow` directory.
+An example genkit flow is present in `example` directory.
 
 ```bash
 git clone https://github.com/IntFlows/genkit-guard.git
