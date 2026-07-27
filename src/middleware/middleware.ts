@@ -2,6 +2,7 @@ import { generateMiddleware, z } from 'genkit';
 import { analyzeIntentStructured, detectInjection } from '../intent/intentAnalyzer.js';
 import { detectPII } from '../pii/detector.js';
 import { PiiTokenizer } from '../pii/tokenizer.js';
+import { defaultPiiVaultStorage, type PiiVaultStorage } from '../pii/storage.js';
 
 const GUARD_CONTEXT_KEY = '__genkitGuard';
 
@@ -18,6 +19,10 @@ const guardConfigSchema = z.object({
     reversible: z.boolean().optional(),
     model: z.string().optional(),
     mode: z.enum(['ner', 'classifier']).optional(),
+    vault: z.object({
+      storage: z.any().optional(),
+      scopeId: z.any().optional(),
+    }).optional(),
   }).optional(),
   logging: z.object({
     enabled: z.boolean().optional(),
@@ -29,7 +34,14 @@ const guardConfigSchema = z.object({
   }).optional(),
 }).passthrough();
 
-type GuardConfig = z.infer<typeof guardConfigSchema>;
+type GuardConfig = z.infer<typeof guardConfigSchema> & {
+  pii?: {
+    vault?: {
+      storage?: PiiVaultStorage;
+      scopeId?: string | ((req: any, ctx: any) => string | undefined);
+    };
+  };
+};
 type LogSeverity = 'debug' | 'info' | 'warn' | 'error';
 
 interface GuardState {
@@ -126,10 +138,10 @@ function createGuardHooks(config?: GuardConfig) {
       const textForPii = collectModelRequestText(req);
       const piiResponse = await scanPII(textForPii, config);
       const piiMatches = piiResponse?.matches || [];
-      const tokenizer = new PiiTokenizer();
+      const tokenizer = createTokenizer(config, req, ctx);
       const piiTypes = uniqueTypes(piiMatches);
 
-      maskModelRequest(req, tokenizer, piiMatches);
+      await maskModelRequest(req, tokenizer, piiMatches);
       pushTokenizer(ctx, tokenizer);
 
       logger(piiMatches.length > 0 ? 'warn' : 'info', 'guard.model.pii.masked', 'PII scan completed for model request', {
@@ -154,7 +166,7 @@ function createGuardHooks(config?: GuardConfig) {
 
       const res = await next(req, ctx);
 
-      const unmaskedResponse = unmaskObject(res, [tokenizer]);
+      const unmaskedResponse = await unmaskObject(res, [tokenizer]);
       logger('info', 'guard.model.response.unmasked', 'Model response unmasked for downstream execution', {
         piiTypes,
       });
@@ -167,7 +179,7 @@ function createGuardHooks(config?: GuardConfig) {
       const toolName = req?.toolRequest?.name;
 
       if (req?.toolRequest && 'input' in req.toolRequest) {
-        req.toolRequest.input = unmaskObject(req.toolRequest.input, state.tokenizers);
+        req.toolRequest.input = await unmaskObject(req.toolRequest.input, state.tokenizers);
       }
 
       const toolInputText = collectStrings(req?.toolRequest?.input).join('\n');
@@ -236,47 +248,47 @@ function collectModelRequestText(req: any): string {
   ].join('\n');
 }
 
-function maskModelRequest(req: any, tokenizer: PiiTokenizer, matches: { type: string; value: string }[]) {
+async function maskModelRequest(req: any, tokenizer: PiiTokenizer, matches: { type: string; value: string }[]) {
   if (typeof req.prompt === 'string') {
-    req.prompt = tokenizer.mask(req.prompt, matches).maskedText;
+    req.prompt = (await tokenizer.mask(req.prompt, matches)).maskedText;
   }
 
   if (req.messages) {
-    req.messages = transformStrings(req.messages, (value) => tokenizer.mask(value, matches).maskedText);
+    req.messages = await transformStrings(req.messages, async (value) => (await tokenizer.mask(value, matches)).maskedText);
   }
 
   if (req.docs) {
-    req.docs = transformStrings(req.docs, (value) => tokenizer.mask(value, matches).maskedText);
+    req.docs = await transformStrings(req.docs, async (value) => (await tokenizer.mask(value, matches)).maskedText);
   }
 }
 
-function unmaskObject(obj: any, tokenizers: PiiTokenizer[]) {
-  return transformStrings(obj, (value) => {
+async function unmaskObject(obj: any, tokenizers: PiiTokenizer[]) {
+  return transformStrings(obj, async (value) => {
     let result = value;
 
     for (const tokenizer of tokenizers) {
-      result = tokenizer.unmask(result);
+      result = await tokenizer.unmask(result);
     }
 
     return result;
   });
 }
 
-function transformStrings(obj: any, transform: (value: string) => string): any {
+async function transformStrings(obj: any, transform: (value: string) => string | Promise<string>): Promise<any> {
   if (typeof obj === 'string') {
-    return transform(obj);
+    return await transform(obj);
   }
 
   if (Array.isArray(obj)) {
     for (let i = 0; i < obj.length; i++) {
-      obj[i] = transformStrings(obj[i], transform);
+      obj[i] = await transformStrings(obj[i], transform);
     }
     return obj;
   }
 
   if (obj !== null && typeof obj === 'object') {
     for (const key of Object.keys(obj)) {
-      obj[key] = transformStrings(obj[key], transform);
+      obj[key] = await transformStrings(obj[key], transform);
     }
     return obj;
   }
@@ -323,6 +335,18 @@ function getGuardState(ctx: any = {}): GuardState {
 function pushTokenizer(ctx: any, tokenizer: PiiTokenizer) {
   const state = getGuardState(ctx);
   state.tokenizers.push(tokenizer);
+}
+
+function createTokenizer(config: GuardConfig | undefined, req: any, ctx: any) {
+  const configuredScope = config?.pii?.vault?.scopeId;
+  const scopeId = typeof configuredScope === 'function'
+    ? configuredScope(req, ctx)
+    : configuredScope;
+
+  return new PiiTokenizer({
+    scopeId: typeof scopeId === 'string' ? scopeId : undefined,
+    storage: config?.pii?.vault?.storage ?? defaultPiiVaultStorage,
+  });
 }
 
 function uniqueTypes(matches: { type: string }[]) {

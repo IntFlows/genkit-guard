@@ -196,6 +196,51 @@ pii: {
 }
 ```
 
+### **PII Vault Isolation and External Storage**
+
+By default, PII is stored in an in-memory vault scoped to a single tokenizer instance. Tokens include a generated vault scope:
+
+```txt
+"Email john.doe@example.com" -> "Email [[EMAIL_<scope>_0]]"
+```
+
+That scope prevents two concurrent users from sharing the same placeholder namespace. If User A and User B both produce an email token, their placeholders and vault lookups are isolated by scope.
+
+For applications that need persistence, distributed workers, audits, or tenant-specific storage, provide a vault storage backend:
+
+```ts
+import { guard, type PiiVaultStorage } from "@intflows/genkit-guard";
+
+class RedisPiiVaultStorage implements PiiVaultStorage {
+  constructor(private redis: RedisClient) {}
+
+  async get(scopeId: string, token: string) {
+    return this.redis.hget(`pii:${scopeId}`, token);
+  }
+
+  async set(scopeId: string, token: string, value: string) {
+    await this.redis.hset(`pii:${scopeId}`, token, value);
+  }
+
+  async entries(scopeId: string) {
+    const values = await this.redis.hgetall(`pii:${scopeId}`);
+    return Object.entries(values).map(([token, value]) => ({ token, value }));
+  }
+}
+
+guard({
+  pii: {
+    reversible: true,
+    vault: {
+      storage: new RedisPiiVaultStorage(redis),
+      scopeId: (req, ctx) => ctx?.auth?.sessionId ?? req?.metadata?.requestId
+    }
+  }
+});
+```
+
+Choose a `scopeId` that matches your isolation boundary, such as request ID, session ID, tenant/user ID, or a combination like `tenantId:userId:requestId`. A shared external backend should never ignore `scopeId`, because placeholder names are only safe when resolved against the correct vault scope.
+
 ---
 
 ## 🛡️ Why This Library Exists
