@@ -1,7 +1,5 @@
 # **@intflows/genkit-guard** 
 
-#### _This version uses OpenAI/privacy-filter instead of bert-base-NER_
-
 ### **Lightweight Intent, PII, and Safety Guardrails for Genkit**
 
 `@intflows/genkit-guard` provides a modular guardrail layer for Genkit flows.  
@@ -115,6 +113,29 @@ const response = await ai.generate({
 ![Image showing PII data masked ](./MaskedPII.png)
 
 ---
+## Example
+
+An example genkit flow is present in `example` directory.
+
+```bash
+git clone https://github.com/IntFlows/genkit-guard.git
+cd genkit-guard/example
+npm install
+node node_modules/@intflows/genkit-guard/scripts/download-model.js
+npx tsx src/index.ts
+```
+
+Or you can run the flow with genkit dev UI
+
+```bash
+git clone https://github.com/IntFlows/genkit-guard.git
+cd genkit-guard/example
+npm install
+node node_modules/@intflows/genkit-guard/scripts/download-model.js
+genkit start -- npx tsx src/index.ts
+```
+
+---
 
 ## 🧠 How It Works
 
@@ -176,6 +197,51 @@ pii: {
   reversible: true
 }
 ```
+
+### **PII Vault Isolation and External Storage**
+
+By default, PII is stored in an in-memory vault scoped to a single tokenizer instance. Tokens include a generated vault scope:
+
+```txt
+"Email john.doe@example.com" -> "Email [[EMAIL_<namespace>_0]]"
+```
+
+That generated namespace prevents two concurrent calls from sharing the same visible placeholder names. Vault lookups are isolated by the configured storage scope, so User A and User B can safely produce their own email tokens without cross-resolving each other's PII.
+
+For applications that need persistence, distributed workers, audits, or tenant-specific storage, provide a vault storage backend:
+
+```ts
+import { guard, type PiiVaultStorage } from "@intflows/genkit-guard";
+
+class RedisPiiVaultStorage implements PiiVaultStorage {
+  constructor(private redis: RedisClient) {}
+
+  async get(scopeId: string, token: string) {
+    return this.redis.hget(`pii:${scopeId}`, token);
+  }
+
+  async set(scopeId: string, token: string, value: string) {
+    await this.redis.hset(`pii:${scopeId}`, token, value);
+  }
+
+  async entries(scopeId: string) {
+    const values = await this.redis.hgetall(`pii:${scopeId}`);
+    return Object.entries(values).map(([token, value]) => ({ token, value }));
+  }
+}
+
+guard({
+  pii: {
+    reversible: true,
+    vault: {
+      storage: new RedisPiiVaultStorage(redis),
+      scopeId: (req, ctx) => ctx?.auth?.sessionId ?? req?.metadata?.requestId
+    }
+  }
+});
+```
+
+Choose a `scopeId` that matches your isolation boundary, such as request ID, session ID, tenant/user ID, or a combination like `tenantId:userId:requestId`. A shared external backend should never ignore `scopeId`, because placeholders are only safe when resolved against the correct vault scope. The placeholder sent to the model uses an opaque generated namespace rather than exposing your `scopeId`.
 
 ---
 
