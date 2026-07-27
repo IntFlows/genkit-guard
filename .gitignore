@@ -1,5 +1,7 @@
 # Model
 models
+example/models/
+example/.genkit/
 package-lock.json
 
 # Logs
@@ -44,6 +46,8 @@ build/Release
 # Dependency directories
 node_modules/
 jspm_packages/
+example/node_modules/
+
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/

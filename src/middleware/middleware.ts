@@ -141,6 +141,7 @@ function createGuardHooks(config?: GuardConfig) {
       const tokenizer = createTokenizer(config, req, ctx);
       const piiTypes = uniqueTypes(piiMatches);
 
+      await tokenizer.importTokens(textForPii);
       await maskModelRequest(req, tokenizer, piiMatches);
       pushTokenizer(ctx, tokenizer);
 
@@ -166,7 +167,7 @@ function createGuardHooks(config?: GuardConfig) {
 
       const res = await next(req, ctx);
 
-      const unmaskedResponse = await unmaskObject(res, [tokenizer]);
+      const unmaskedResponse = await unmaskObject(res, getGuardState(ctx).tokenizers);
       logger('info', 'guard.model.response.unmasked', 'Model response unmasked for downstream execution', {
         piiTypes,
       });

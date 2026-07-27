@@ -121,6 +121,7 @@ An example genkit flow is present in `example` directory.
 git clone https://github.com/IntFlows/genkit-guard.git
 cd genkit-guard/example
 npm install
+node node_modules/@intflows/genkit-guard/scripts/download-model.js
 npx tsx src/index.ts
 ```
 
@@ -130,6 +131,7 @@ Or you can run the flow with genkit dev UI
 git clone https://github.com/IntFlows/genkit-guard.git
 cd genkit-guard/example
 npm install
+node node_modules/@intflows/genkit-guard/scripts/download-model.js
 genkit start -- npx tsx src/index.ts
 ```
 
@@ -201,10 +203,10 @@ pii: {
 By default, PII is stored in an in-memory vault scoped to a single tokenizer instance. Tokens include a generated vault scope:
 
 ```txt
-"Email john.doe@example.com" -> "Email [[EMAIL_<scope>_0]]"
+"Email john.doe@example.com" -> "Email [[EMAIL_<namespace>_0]]"
 ```
 
-That scope prevents two concurrent users from sharing the same placeholder namespace. If User A and User B both produce an email token, their placeholders and vault lookups are isolated by scope.
+That generated namespace prevents two concurrent calls from sharing the same visible placeholder names. Vault lookups are isolated by the configured storage scope, so User A and User B can safely produce their own email tokens without cross-resolving each other's PII.
 
 For applications that need persistence, distributed workers, audits, or tenant-specific storage, provide a vault storage backend:
 
@@ -239,7 +241,7 @@ guard({
 });
 ```
 
-Choose a `scopeId` that matches your isolation boundary, such as request ID, session ID, tenant/user ID, or a combination like `tenantId:userId:requestId`. A shared external backend should never ignore `scopeId`, because placeholder names are only safe when resolved against the correct vault scope.
+Choose a `scopeId` that matches your isolation boundary, such as request ID, session ID, tenant/user ID, or a combination like `tenantId:userId:requestId`. A shared external backend should never ignore `scopeId`, because placeholders are only safe when resolved against the correct vault scope. The placeholder sent to the model uses an opaque generated namespace rather than exposing your `scopeId`.
 
 ---
 

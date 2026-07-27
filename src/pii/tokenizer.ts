@@ -16,15 +16,17 @@ export class PiiTokenizer {
   private counter = 0;
   private piiTypes = new Set<string>();
   private scopeId: string;
+  private tokenNamespace: string;
   private storage: PiiVaultStorage;
 
   constructor(options: PiiTokenizerOptions = {}) {
     this.scopeId = options.scopeId ?? createVaultScopeId();
+    this.tokenNamespace = createVaultScopeId();
     this.storage = options.storage ?? defaultPiiVaultStorage;
   }
 
   private createToken(type: string) {
-    return `[[${type}_${this.scopeId}_${this.counter++}]]`;
+    return `[[${type}_${this.tokenNamespace}_${this.counter++}]]`;
   }
 
   async mask(text: string, matches: { type: string; value: string }[]): Promise<PiiResult> {
@@ -65,6 +67,21 @@ export class PiiTokenizer {
     }
 
     return result;
+  }
+
+  async importTokens(text: string) {
+    if (!this.storage.getByToken) {
+      return;
+    }
+
+    const tokenMatches = Array.from(text.matchAll(/\[\[[A-Z_]+_[A-Za-z0-9]+_\d+\]\]/g));
+
+    for (const [token] of tokenMatches) {
+      const value = await this.storage.getByToken(token);
+      if (value) {
+        await this.storage.set(this.scopeId, token, value);
+      }
+    }
   }
 
   async getVault() {

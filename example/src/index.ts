@@ -57,7 +57,9 @@ export const integrationFlow = ai.defineFlow(
   },
   async (input) => {
     const response = await ai.generate({
-      system: "You are an Azure Integration Architect. Execute a tool query whenever a file path or name is provided.",
+      system: `You are an Azure Integration Architect. If the user asks for blob metadata and a blob name is provided, 
+                  call fetchBlobMetadata once. After the tool returns metadata, answer the user using the tool result. 
+                  Do not call fetchBlobMetadata again for the same blob in the same request.`,
       prompt: input.question,
       // Provide tools globally so the model can choose to call them
       tools: [fetchBlobMetadata], 
