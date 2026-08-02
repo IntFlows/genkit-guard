@@ -2,8 +2,20 @@ import { ModelSingleton } from './util/singleton.js';
 
 // export { intentGuard, piiGuard  } from './middleware/middleware.js';
 export { guard, guardAction, guardMiddleware, guardPlugin } from './middleware/middleware.js';
-export { InMemoryPiiVaultStorage, defaultPiiVaultStorage } from './pii/storage.js';
-export type { PiiVaultEntry, PiiVaultStorage } from './pii/storage.js';
+export type { GuardConfig } from './middleware/middleware.js';
+export {
+  InMemoryPiiVaultStorage,
+  createPiiVaultStorage,
+  createRedisPiiVaultStorage,
+  defaultPiiVaultStorage,
+} from './pii/storage.js';
+export type {
+  PiiVaultEntry,
+  PiiVaultStorage,
+  PiiVaultStorageAdapter,
+  RedisPiiVaultClient,
+  RedisPiiVaultStorageOptions,
+} from './pii/storage.js';
 export * from './core/types.js';
 
 function logGuardEvent(eventName: string, body: string, attributes: Record<string, any> = {}) {

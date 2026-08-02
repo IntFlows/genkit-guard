@@ -6,3 +6,4 @@ models/
 node_modules/
 dist/models/
 example-flow/
+example/

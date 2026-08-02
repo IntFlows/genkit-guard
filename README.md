@@ -208,40 +208,35 @@ By default, PII is stored in an in-memory vault scoped to a single tokenizer ins
 
 That generated namespace prevents two concurrent calls from sharing the same visible placeholder names. Vault lookups are isolated by the configured storage scope, so User A and User B can safely produce their own email tokens without cross-resolving each other's PII.
 
-For applications that need persistence, distributed workers, audits, or tenant-specific storage, provide a vault storage backend:
+For applications that need persistence, distributed workers, audits, or tenant-specific storage, provide a vault storage backend. Redis clients can be passed through the built-in helper:
 
 ```ts
-import { guard, type PiiVaultStorage } from "@intflows/genkit-guard";
+import { createClient } from "redis";
+import { guard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
 
-class RedisPiiVaultStorage implements PiiVaultStorage {
-  constructor(private redis: RedisClient) {}
-
-  async get(scopeId: string, token: string) {
-    return this.redis.hget(`pii:${scopeId}`, token);
-  }
-
-  async set(scopeId: string, token: string, value: string) {
-    await this.redis.hset(`pii:${scopeId}`, token, value);
-  }
-
-  async entries(scopeId: string) {
-    const values = await this.redis.hgetall(`pii:${scopeId}`);
-    return Object.entries(values).map(([token, value]) => ({ token, value }));
-  }
-}
+const redis = createClient({ url: "redis://localhost:6379" });
+await redis.connect();
 
 guard({
   pii: {
     reversible: true,
     vault: {
-      storage: new RedisPiiVaultStorage(redis),
+      storage: createRedisPiiVaultStorage(redis, {
+        keyPrefix: "my-app:pii",
+        ttlSeconds: 3600
+      }),
       scopeId: (req, ctx) => ctx?.auth?.sessionId ?? req?.metadata?.requestId
     }
   }
 });
 ```
 
+For another backend, use `createPiiVaultStorage({ get, set, entries, getByToken })` with your database, cache, or secret store.
+
 Choose a `scopeId` that matches your isolation boundary, such as request ID, session ID, tenant/user ID, or a combination like `tenantId:userId:requestId`. A shared external backend should never ignore `scopeId`, because placeholders are only safe when resolved against the correct vault scope. The placeholder sent to the model uses an opaque generated namespace rather than exposing your `scopeId`.
+
+### Screenshots
+![Redis Stored PII ](redis-scan.png)
 
 ---
 

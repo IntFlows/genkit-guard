@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@genkit-ai/google-genai": "1.39.0",
+    "redis": "^5.0.0",
     "genkit": "1.39.0",
     "@intflows/genkit-guard": "0.0.10"
   }
