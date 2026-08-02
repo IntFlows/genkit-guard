@@ -34,13 +34,33 @@ const guardConfigSchema = z.object({
   }).optional(),
 }).passthrough();
 
-type GuardConfig = z.infer<typeof guardConfigSchema> & {
+export type GuardConfig = {
+  intent?: {
+    mode?: string;
+    allowedIntent?: string;
+    semantic?: {
+      threshold?: number;
+      intents: Record<string, string>;
+    };
+  };
   pii?: {
+    reversible?: boolean;
+    model?: string;
+    mode?: 'ner' | 'classifier';
     vault?: {
       storage?: PiiVaultStorage;
       scopeId?: string | ((req: any, ctx: any) => string | undefined);
     };
   };
+  logging?: {
+    enabled?: boolean;
+    level?: LogSeverity;
+    serviceName?: string;
+  };
+  models?: {
+    extractor?: string;
+  };
+  [key: string]: any;
 };
 type LogSeverity = 'debug' | 'info' | 'warn' | 'error';
 
@@ -61,7 +81,7 @@ export const guardPlugin = guardMiddleware.plugin;
 
 export function guard(config?: GuardConfig) {
   const hooks = createGuardHooks(config);
-  const baseMiddleware = guardMiddleware(config);
+  const baseMiddleware = guardMiddleware(config as any);
 
   const fnRunner = async (req: any, ctxOrNext: any, maybeNext?: any) => {
     if (typeof maybeNext === 'function') {

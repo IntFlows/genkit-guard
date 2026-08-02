@@ -35,7 +35,11 @@
   "scripts": {
     "prepare-models": "node scripts/download-model.js",
     "build": "tsc",
+    "test": "npm run test:types && npm run test:storage && npm run test:concurrency",
+    "test:types": "tsc --noEmit --ignoreConfig --module NodeNext --moduleResolution NodeNext --target ESNext --strict --skipLibCheck scripts/test-types.ts",
+    "test:storage": "npm run build && node scripts/test-storage.js",
     "test:concurrency": "npm run build && node scripts/test-concurrent-vault.js",
+    "test:redis": "npm run build && node scripts/test-redis-vault.js",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
