@@ -5,9 +5,5 @@ models/
 .cache/
 node_modules/
 dist/models/
-<<<<<<< HEAD
 example-flow/
 example/
-=======
-example-flow/
->>>>>>> ee2392161426986bc667a4c6d04432d5c7de590f
