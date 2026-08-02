@@ -235,6 +235,9 @@ For another backend, use `createPiiVaultStorage({ get, set, entries, getByToken 
 
 Choose a `scopeId` that matches your isolation boundary, such as request ID, session ID, tenant/user ID, or a combination like `tenantId:userId:requestId`. A shared external backend should never ignore `scopeId`, because placeholders are only safe when resolved against the correct vault scope. The placeholder sent to the model uses an opaque generated namespace rather than exposing your `scopeId`.
 
+### Screenshots
+![Redis Stored PII ](redis-scan.png)
+
 ---
 
 ## 🛡️ Why This Library Exists
