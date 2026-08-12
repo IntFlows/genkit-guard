@@ -217,19 +217,29 @@ import { guard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
 const redis = createClient({ url: "redis://localhost:6379" });
 await redis.connect();
 
+// Connect Redis before constructing the vault and before accepting requests. A runtime
+// fallback cannot help if the Redis client itself was never initialized and connected.
+
 guard({
   pii: {
     reversible: true,
     vault: {
       storage: createRedisPiiVaultStorage(redis, {
         keyPrefix: "my-app:pii",
-        ttlSeconds: 3600
+        ttlSeconds: 3600,
+        fallbackToMemory: true
       }),
       scopeId: (req, ctx) => ctx?.auth?.sessionId ?? req?.metadata?.requestId
     }
   }
 });
 ```
+
+`ttlSeconds` applies the configured expiry to both the scoped vault and token index. When
+`fallbackToMemory` is enabled, successful writes are also mirrored in process memory and Redis
+operation failures fall back to that mirror. The fallback is disabled by default, is local to one
+process, and is not a replacement for Redis persistence or multi-worker availability. Its in-memory
+entries observe the same TTL. Redis errors continue to propagate when fallback is disabled.
 
 For another backend, use `createPiiVaultStorage({ get, set, entries, getByToken })` with your database, cache, or secret store.
 

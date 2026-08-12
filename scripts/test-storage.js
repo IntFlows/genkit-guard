@@ -75,4 +75,63 @@ const laterPassTokenizer = new PiiTokenizer({ scopeId: 'tenant:userA:later', sto
 await laterPassTokenizer.importTokens(userAMasked.maskedText);
 assert.equal(await laterPassTokenizer.unmask(userAMasked.maskedText), 'Email alice@example.com');
 
+assert.equal(redis.expirations.get('test:pii:scope:tenant:userA'), 60);
+assert.equal(redis.expirations.get('test:pii:tokens'), 60);
+
+class FailingRedis extends FakeRedis {
+  failed = false;
+
+  fail() {
+    this.failed = true;
+  }
+
+  async hGet(key, field) {
+    if (this.failed) throw new Error('Redis unavailable');
+    return super.hGet(key, field);
+  }
+
+  async hSet(key, field, value) {
+    if (this.failed) throw new Error('Redis unavailable');
+    return super.hSet(key, field, value);
+  }
+
+  async hGetAll(key) {
+    if (this.failed) throw new Error('Redis unavailable');
+    return super.hGetAll(key);
+  }
+}
+
+const failingRedis = new FailingRedis();
+const resilientStorage = createRedisPiiVaultStorage(failingRedis, { fallbackToMemory: true });
+await resilientStorage.set('resilient-scope', '[[EMAIL_resilient_0]]', 'safe@example.com');
+failingRedis.fail();
+assert.equal(
+  await resilientStorage.get('resilient-scope', '[[EMAIL_resilient_0]]'),
+  'safe@example.com'
+);
+assert.equal(await resilientStorage.getByToken('[[EMAIL_resilient_0]]'), 'safe@example.com');
+assert.deepEqual(await resilientStorage.entries('resilient-scope'), [
+  { token: '[[EMAIL_resilient_0]]', value: 'safe@example.com' },
+]);
+await resilientStorage.set('resilient-scope', '[[PHONE_resilient_1]]', '0400000000');
+assert.equal(await resilientStorage.getByToken('[[PHONE_resilient_1]]'), '0400000000');
+
+const strictRedis = new FailingRedis();
+const strictStorage = createRedisPiiVaultStorage(strictRedis);
+strictRedis.fail();
+await assert.rejects(() => strictStorage.get('scope', 'token'), /Redis unavailable/);
+
+assert.throws(
+  () => createRedisPiiVaultStorage(new FakeRedis(), { ttlSeconds: 0 }),
+  /positive integer/
+);
+assert.throws(
+  () =>
+    createRedisPiiVaultStorage(
+      { hGet: async () => null, hSet: async () => undefined, hGetAll: async () => ({}) },
+      { ttlSeconds: 60 }
+    ),
+  /requires an expire method/
+);
+
 console.log('PII vault storage tests passed.');

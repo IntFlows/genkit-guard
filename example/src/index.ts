@@ -1,6 +1,31 @@
 import { googleAI } from "@genkit-ai/google-genai";
 import { genkit, z } from "genkit";
 import { initGuard, guard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
+import { createClient } from "redis";
+
+// Connect infrastructure before initializing Genkit or loading guard models. If Redis cannot
+// connect, startup fails instead of silently switching to the default in-memory PII vault.
+const redis = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+});
+
+redis.on("error", (error: unknown) => {
+  console.error("Redis PII vault error:", error);
+});
+
+await redis.connect();
+await redis.ping();
+console.log(`Redis PII vault connected: ${process.env.REDIS_URL ?? "redis://localhost:6379"}`);
+
+const piiVault = {
+  storage: createRedisPiiVaultStorage(redis, {
+    keyPrefix: process.env.REDIS_PII_KEY_PREFIX ?? "genkit-app:pii",
+    ttlSeconds: Number(process.env.REDIS_PII_TTL_SECONDS ?? 3600),
+    fallbackToMemory: true,
+  }),
+  scopeId: (req: any, ctx: any) =>
+    ctx?.auth?.sessionId ?? req?.metadata?.requestId ?? "example-session",
+};
 
 await initGuard();
 
@@ -8,8 +33,6 @@ const ai = genkit({
   plugins: [googleAI()],
   model: googleAI.model("gemini-3.1-flash-lite-preview"),
 });
-
-const piiVault = await createPiiVault();
 
 // ---------------------------
 // Simulated Tool
@@ -106,33 +129,16 @@ async function main() {
   // We explicitly embed the PII data directly into the target string required by the tool call
   const targetPrompt = input || "Fetch metadata for the blob named 'sensitive-user-data-john.doe@example.com.json' inside Azure Blob Storage.";
   
-  const result = await integrationFlow({ question: targetPrompt });
-  console.log('Final Flow Return Object to Client:', result);
-}
-
-main().catch(console.error);
-
-async function createPiiVault() {
-  if (process.env.REDIS_PII_VAULT !== "true") {
-    return undefined;
+  try {
+    const result = await integrationFlow({ question: targetPrompt });
+    console.log('Final Flow Return Object to Client:', result);
+  } finally {
+    await redis.close();
   }
-
-  const { createClient } = await import("redis");
-  const redis = createClient({
-    url: process.env.REDIS_URL ?? "redis://localhost:6379",
-  });
-
-  redis.on("error", (error) => {
-    console.error("Redis PII vault error:", error);
-  });
-
-  await redis.connect();
-
-  return {
-    storage: createRedisPiiVaultStorage(redis, {
-      keyPrefix: process.env.REDIS_PII_KEY_PREFIX ?? "genkit-guard:example:pii",
-      ttlSeconds: Number(process.env.REDIS_PII_TTL_SECONDS ?? 3600),
-    }),
-    scopeId: (_req: any, ctx: any) => ctx?.auth?.sessionId ?? "example-session",
-  };
 }
+
+main().catch(async (error) => {
+  console.error(error);
+  if (redis.isOpen) await redis.close();
+  process.exitCode = 1;
+});

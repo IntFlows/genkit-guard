@@ -34,7 +34,13 @@ export type RedisPiiVaultClient = {
 export type RedisPiiVaultStorageOptions = {
   keyPrefix?: string;
   tokenIndexKey?: string;
+  /** Expire Redis vault keys after this many seconds. Omit to keep them indefinitely. */
   ttlSeconds?: number;
+  /**
+   * Keep a process-local mirror and use it when a Redis operation fails.
+   * Disabled by default so Redis failures remain visible to callers.
+   */
+  fallbackToMemory?: boolean;
 };
 
 export function createRedisPiiVaultStorage(
@@ -43,6 +49,15 @@ export function createRedisPiiVaultStorage(
 ): PiiVaultStorage {
   const keyPrefix = options.keyPrefix ?? 'genkit-guard:pii';
   const tokenIndexKey = options.tokenIndexKey ?? `${keyPrefix}:tokens`;
+  const ttlSeconds = options.ttlSeconds;
+
+  if (ttlSeconds !== undefined && (!Number.isInteger(ttlSeconds) || ttlSeconds <= 0)) {
+    throw new Error('Redis PII vault ttlSeconds must be a positive integer.');
+  }
+
+  if (ttlSeconds !== undefined && !redis.expire) {
+    throw new Error('Redis PII vault ttlSeconds requires an expire method on the Redis client.');
+  }
 
   const hGet = redis.hGet?.bind(redis) ?? redis.hget?.bind(redis);
   const hSet = redis.hSet?.bind(redis) ?? redis.hset?.bind(redis);
@@ -53,32 +68,98 @@ export function createRedisPiiVaultStorage(
   }
 
   const scopeKey = (scopeId: string) => `${keyPrefix}:scope:${scopeId}`;
+  const fallback = options.fallbackToMemory ? new ExpiringInMemoryPiiVaultStorage(ttlSeconds) : undefined;
 
   async function maybeExpire(key: string) {
-    if (options.ttlSeconds && redis.expire) {
-      await redis.expire(key, options.ttlSeconds);
+    if (ttlSeconds !== undefined) {
+      await redis.expire!(key, ttlSeconds);
+    }
+  }
+
+  async function withFallback<T>(redisOperation: () => Promise<T>, memoryOperation: () => T | Promise<T>) {
+    try {
+      return await redisOperation();
+    } catch (error) {
+      if (!fallback) throw error;
+      return memoryOperation();
     }
   }
 
   return createPiiVaultStorage({
     async get(scopeId, token) {
-      return (await hGet(scopeKey(scopeId), token)) ?? undefined;
+      return withFallback(
+        async () => (await hGet(scopeKey(scopeId), token)) ?? undefined,
+        () => fallback!.get(scopeId, token)
+      );
     },
     async getByToken(token) {
-      return (await hGet(tokenIndexKey, token)) ?? undefined;
+      return withFallback(
+        async () => (await hGet(tokenIndexKey, token)) ?? undefined,
+        () => fallback!.getByToken(token)
+      );
     },
     async set(scopeId, token, value) {
       const scopedKey = scopeKey(scopeId);
-      await hSet(scopedKey, token, value);
-      await hSet(tokenIndexKey, token, value);
-      await maybeExpire(scopedKey);
-      await maybeExpire(tokenIndexKey);
+      // Warm the opt-in fallback on every write so data written before an outage is available.
+      await fallback?.set(scopeId, token, value);
+      await withFallback(
+        async () => {
+          await hSet(scopedKey, token, value);
+          await hSet(tokenIndexKey, token, value);
+          await maybeExpire(scopedKey);
+          await maybeExpire(tokenIndexKey);
+        },
+        () => undefined
+      );
     },
     async entries(scopeId) {
-      const values = await hGetAll(scopeKey(scopeId));
-      return Object.entries(values).map(([token, value]) => ({ token, value }));
+      return withFallback(
+        async () => {
+          const values = await hGetAll(scopeKey(scopeId));
+          return Object.entries(values).map(([token, value]) => ({ token, value }));
+        },
+        () => fallback!.entries(scopeId)
+      );
     },
   });
+}
+
+class ExpiringInMemoryPiiVaultStorage implements PiiVaultStorage {
+  private readonly storage = new InMemoryPiiVaultStorage();
+  private readonly scopeExpiresAt = new Map<string, number>();
+  private tokenIndexExpiresAt?: number;
+
+  constructor(private readonly ttlSeconds?: number) {}
+
+  get(scopeId: string, token: string) {
+    return this.isScopeExpired(scopeId) ? undefined : this.storage.get(scopeId, token);
+  }
+
+  getByToken(token: string) {
+    return this.isTokenIndexExpired() ? undefined : this.storage.getByToken(token);
+  }
+
+  set(scopeId: string, token: string, value: string) {
+    this.storage.set(scopeId, token, value);
+    if (this.ttlSeconds !== undefined) {
+      const expiry = Date.now() + this.ttlSeconds * 1_000;
+      this.scopeExpiresAt.set(scopeId, expiry);
+      this.tokenIndexExpiresAt = expiry;
+    }
+  }
+
+  entries(scopeId: string) {
+    return this.isScopeExpired(scopeId) ? [] : this.storage.entries(scopeId);
+  }
+
+  private isScopeExpired(scopeId: string) {
+    const expiry = this.scopeExpiresAt.get(scopeId);
+    return expiry !== undefined && expiry <= Date.now();
+  }
+
+  private isTokenIndexExpired() {
+    return this.tokenIndexExpiresAt !== undefined && this.tokenIndexExpiresAt <= Date.now();
+  }
 }
 
 export class InMemoryPiiVaultStorage implements PiiVaultStorage {
