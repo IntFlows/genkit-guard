@@ -3,38 +3,15 @@ import { genkit, z } from "genkit";
 import { initGuard, guard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
 import { createClient } from "redis";
 
-// Connect infrastructure before initializing Genkit or loading guard models. If Redis cannot
-// connect, startup fails instead of silently switching to the default in-memory PII vault.
-const redis = createClient({
-  url: process.env.REDIS_URL ?? "redis://localhost:6379",
-});
-
-redis.on("error", (error: unknown) => {
-  console.error("Redis PII vault error:", error);
-});
-
-await redis.connect();
-await redis.ping();
-console.log(`Redis PII vault connected: ${process.env.REDIS_URL ?? "redis://localhost:6379"}`);
-
-const piiVault = {
-  storage: createRedisPiiVaultStorage(redis, {
-    keyPrefix: process.env.REDIS_PII_KEY_PREFIX ?? "genkit-app:pii",
-    ttlSeconds: Number(process.env.REDIS_PII_TTL_SECONDS ?? 3600),
-    fallbackToMemory: true,
-  }),
-  scopeId: (req: any, ctx: any) =>
-    ctx?.auth?.sessionId ?? req?.metadata?.requestId ?? "example-session",
-};
-
 await initGuard();
+const redis = createClient({ url: "redis://localhost:6379" });
+await redis.connect();
+
 
 const ai = genkit({
   plugins: [googleAI()],
   model: googleAI.model("gemini-3.1-flash-lite-preview"),
 });
-
-const piiVault = await createPiiVault();
 
 // ---------------------------
 // Simulated Tool
@@ -88,8 +65,6 @@ export const integrationFlow = ai.defineFlow(
                   call fetchBlobMetadata once. After the tool returns metadata, answer the user using the tool result. 
                   Do not call fetchBlobMetadata again for the same blob in the same request.`,
       prompt: input.question,
-      maxTurns: 2,
-      maxTurns: 2,
       // Provide tools globally so the model can choose to call them
       tools: [fetchBlobMetadata], 
       use: [
@@ -105,14 +80,17 @@ export const integrationFlow = ai.defineFlow(
               },
             },
           },
-          pii: {
-            reversible: true,
-            vault: piiVault,
-          },
-          pii: {
-            reversible: true,
-            vault: piiVault,
-          },
+          pii: { 
+                 reversible: true,
+                 vault: {
+                    storage: createRedisPiiVaultStorage(redis, {
+                    keyPrefix: "genkit-app:pii",
+                    ttlSeconds: 3600,
+                    fallbackToMemory: true,
+                    }),
+                    scopeId: (req, ctx) => ctx?.auth?.sessionId ?? req?.metadata?.requestId
+                  },
+                } 
         }),
       ],
     });
@@ -136,16 +114,8 @@ async function main() {
   // We explicitly embed the PII data directly into the target string required by the tool call
   const targetPrompt = input || "Fetch metadata for the blob named 'sensitive-user-data-john.doe@example.com.json' inside Azure Blob Storage.";
   
-  try {
-    const result = await integrationFlow({ question: targetPrompt });
-    console.log('Final Flow Return Object to Client:', result);
-  } finally {
-    await redis.close();
-  }
+  const result = await integrationFlow({ question: targetPrompt });
+  console.log('Final Flow Return Object to Client:', result);
 }
 
-main().catch(async (error) => {
-  console.error(error);
-  if (redis.isOpen) await redis.close();
-  process.exitCode = 1;
-});
+main().catch(console.error);
