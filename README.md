@@ -246,9 +246,6 @@ Choose a `scopeId` that matches your isolation boundary, such as request ID, ses
 ### Screenshots
 ![Redis Stored PII ](redis-scan.png)
 
-### Screenshots
-![Redis Stored PII ](redis-scan.png)
-
 ---
 
 ## 🛡️ Why This Library Exists
