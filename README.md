@@ -209,8 +209,11 @@ By default, PII is stored in an in-memory vault scoped to a single tokenizer ins
 That generated namespace prevents two concurrent calls from sharing the same visible placeholder names. Vault lookups are isolated by the configured storage scope, so User A and User B can safely produce their own email tokens without cross-resolving each other's PII.
 
 For applications that need persistence, distributed workers, audits, or tenant-specific storage, provide a vault storage backend. Redis clients can be passed through the built-in helper:
+For applications that need persistence, distributed workers, audits, or tenant-specific storage, provide a vault storage backend. Redis clients can be passed through the built-in helper:
 
 ```ts
+import { createClient } from "redis";
+import { guard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
 import { createClient } from "redis";
 import { guard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
 
@@ -244,6 +247,9 @@ entries observe the same TTL. Redis errors continue to propagate when fallback i
 For another backend, use `createPiiVaultStorage({ get, set, entries, getByToken })` with your database, cache, or secret store.
 
 Choose a `scopeId` that matches your isolation boundary, such as request ID, session ID, tenant/user ID, or a combination like `tenantId:userId:requestId`. A shared external backend should never ignore `scopeId`, because placeholders are only safe when resolved against the correct vault scope. The placeholder sent to the model uses an opaque generated namespace rather than exposing your `scopeId`.
+
+### Screenshots
+![Redis Stored PII ](redis-scan.png)
 
 ### Screenshots
 ![Redis Stored PII ](redis-scan.png)

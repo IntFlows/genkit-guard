@@ -34,6 +34,8 @@ const ai = genkit({
   model: googleAI.model("gemini-3.1-flash-lite-preview"),
 });
 
+const piiVault = await createPiiVault();
+
 // ---------------------------
 // Simulated Tool
 // ---------------------------
@@ -87,6 +89,7 @@ export const integrationFlow = ai.defineFlow(
                   Do not call fetchBlobMetadata again for the same blob in the same request.`,
       prompt: input.question,
       maxTurns: 2,
+      maxTurns: 2,
       // Provide tools globally so the model can choose to call them
       tools: [fetchBlobMetadata], 
       use: [
@@ -101,6 +104,10 @@ export const integrationFlow = ai.defineFlow(
                   "Technical questions about APIs, Azure Blobs, data workflows, file downloads, and Azure Cloud integrations.",
               },
             },
+          },
+          pii: {
+            reversible: true,
+            vault: piiVault,
           },
           pii: {
             reversible: true,
