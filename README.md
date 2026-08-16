@@ -214,14 +214,9 @@ For applications that need persistence, distributed workers, audits, or tenant-s
 ```ts
 import { createClient } from "redis";
 import { guard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
-import { createClient } from "redis";
-import { guard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
 
 const redis = createClient({ url: "redis://localhost:6379" });
 await redis.connect();
-
-// Connect Redis before constructing the vault and before accepting requests. A runtime
-// fallback cannot help if the Redis client itself was never initialized and connected.
 
 guard({
   pii: {
