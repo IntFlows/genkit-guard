@@ -22,20 +22,11 @@
     "huggingface"
   ],
   "license": "Apache-2.0",
-  "version": "0.1.0",
-  "engines": {
-    "node": ">=20"
-  },
+  "version": "0.0.13",
   "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
+  "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "CHANGELOG.md",
     "README.md",
     "package.json",
     "scripts/",
@@ -43,12 +34,11 @@
   ],
   "scripts": {
     "prepare-models": "node scripts/download-model.js",
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
-    "test": "npm run test:types && npm run test:unit && npm run test:storage && npm run test:concurrency",
-    "test:unit": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc",
+    "test": "npm run test:types && npm run test:privacy-filter && npm run test:storage && npm run test:concurrency",
     "test:types": "tsc --noEmit --ignoreConfig --module NodeNext --moduleResolution NodeNext --target ESNext --strict --skipLibCheck scripts/test-types.ts",
+    "test:privacy-filter": "npm run build && node scripts/test-privacy-filter.js",
     "test:storage": "npm run build && node scripts/test-storage.js",
     "test:concurrency": "npm run build && node scripts/test-concurrent-vault.js",
     "test:redis": "npm run build && node scripts/test-redis-vault.js",
@@ -63,9 +53,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.8.0",
-    "@vitest/coverage-v8": "^4.1.11",
     "genkit": "^1.39.0",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "typescript": "^6.0.3"
   }
 }

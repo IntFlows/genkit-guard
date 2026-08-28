@@ -1,5 +1,27 @@
 import { ModelSingleton } from '../util/singleton.js';
 
+export type PiiMatch = { type: string; value: string };
+
+export type PrivacyFilterSpan = {
+  entity_group?: string;
+  entity?: string;
+  word?: string;
+  start?: number;
+  end?: number;
+  score?: number;
+};
+
+const PRIVACY_FILTER_TYPE_MAP: Record<string, string> = {
+  account_number: 'ACCOUNT_NUMBER',
+  private_address: 'ADDRESS',
+  private_email: 'EMAIL',
+  private_person: 'NAME',
+  private_phone: 'PHONE',
+  private_url: 'URL',
+  private_date: 'DATE',
+  secret: 'SECRET',
+};
+
 const REGEX_RULES = [
   // EMAIL (keep your existing one)
   { type: 'EMAIL', pattern: /\b[\w\.-]+@[\w\.-]+\.\w{2,}\b/gi },
@@ -27,7 +49,7 @@ export async function detectPII(text: string, opts?: { model?: string; mode?: 'n
   const mode = opts?.mode ?? 'ner';
   const model = opts?.model;
 
-  const results: { type: string; value: string }[] = [];
+  const results: PiiMatch[] = [];
 
   // ---- REGEX (always run) ----
   for (const rule of REGEX_RULES) {
@@ -47,13 +69,56 @@ export async function detectPII(text: string, opts?: { model?: string; mode?: 'n
       }
     }
   } else {
-    // classifier mode: we call the classifier and return its output alongside regex matches.
+    // Privacy Filter is a token-classification model. Aggregation produces complete spans
+    // rather than individual BIOES-labelled tokens.
     const cls = await ModelSingleton.getPIIClassifier(model);
-    classifierOutput = await cls(text);
+    classifierOutput = await cls(text, { aggregation_strategy: 'simple' });
+    for (const match of privacyFilterOutputToMatches(text, classifierOutput)) {
+      if (!results.some((existing) => existing.value === match.value)) {
+        results.push(match);
+      }
+    }
   }
 
   return {
     matches: results,
     classifier: classifierOutput
   };
+}
+
+export function privacyFilterOutputToMatches(text: string, output: unknown): PiiMatch[] {
+  if (!Array.isArray(output)) return [];
+
+  const matches: PiiMatch[] = [];
+  for (const candidate of output) {
+    if (!candidate || typeof candidate !== 'object') continue;
+
+    const span = candidate as PrivacyFilterSpan;
+    const rawLabel = span.entity_group ?? span.entity;
+    if (typeof rawLabel !== 'string') continue;
+
+    const label = rawLabel.replace(/^[BIES]-/, '').toLowerCase();
+    const type = PRIVACY_FILTER_TYPE_MAP[label];
+    if (!type) continue;
+
+    let value: string | undefined;
+    if (
+      Number.isInteger(span.start) &&
+      Number.isInteger(span.end) &&
+      span.start! >= 0 &&
+      span.end! > span.start! &&
+      span.end! <= text.length
+    ) {
+      value = text.slice(span.start, span.end);
+    } else if (typeof span.word === 'string') {
+      value = span.word.trim();
+    }
+
+    if (!value || !text.includes(value)) continue;
+    if (!matches.some((existing) => existing.value === value)) {
+      matches.push({ type, value });
+    }
+  }
+
+  return matches;
 }

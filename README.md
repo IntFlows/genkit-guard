@@ -7,8 +7,6 @@ It adds **semantic intent validation**, **PII masking/unmasking**, and **prompt�
 
 This library is designed for developers who want **practical, production‑ready safety controls** without heavy dependencies or complex setup.
 
-Version `0.1.0` establishes the typed public API and a CI-enforced middleware regression suite.
-
 ---
 
 ## ✨ Features
@@ -65,36 +63,7 @@ npm install @intflows/genkit-guard
 # Download Local Models (Only needed once)
 node node_modules/@intflows/genkit-guard/scripts/download-model.js
 ```
-
 _This downloads the models to `./models`; the total size is approximately 1.5 GB._
-
-### Typed middleware API
-
-The public middleware contracts can be imported without depending on internal Genkit types:
-
-```ts
-import {
-  guard,
-  type GuardConfig,
-  type GuardContext,
-  type GuardRequest,
-} from "@intflows/genkit-guard";
-
-const config: GuardConfig = {
-  intent: {
-    mode: "semantic",
-    semantic: {
-      threshold: 0.7,
-      intents: { support: "Customer support questions" },
-    },
-  },
-};
-
-const middleware = guard(config);
-```
-
-Also exported: `GuardRunner`, `GuardHooks`, `GuardNext`, `GuardScopeResolver`,
-`GuardBlockedResponse`, `GuardLogSeverity`, and `InitGuardConfig`.
 
 ### 2. Update genkit
 
@@ -225,8 +194,20 @@ intent: {
 
 ```ts
 pii: {
-  reversible: true
+  reversible: true,
+  mode: "classifier"
 }
+```
+
+`classifier` mode uses `openai/privacy-filter` as a token-classification model with aggregated
+spans. Model-detected names, addresses, emails, phone numbers, URLs, dates, account numbers and
+secrets are converted into reversible masking tokens. Regex rules continue to run as an additional
+layer, and duplicate spans are masked only once.
+
+Preload the same mode during application startup:
+
+```ts
+await initGuard({ pii: { mode: "classifier" } });
 ```
 
 ### **PII Vault Isolation and External Storage**
