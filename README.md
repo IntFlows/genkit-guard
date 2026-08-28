@@ -7,6 +7,8 @@ It adds **semantic intent validation**, **PII masking/unmasking**, and **prompt�
 
 This library is designed for developers who want **practical, production‑ready safety controls** without heavy dependencies or complex setup.
 
+Version `0.1.0` establishes the typed public API and a CI-enforced middleware regression suite.
+
 ---
 
 ## ✨ Features
@@ -63,7 +65,36 @@ npm install @intflows/genkit-guard
 # Download Local Models (Only needed once)
 node node_modules/@intflows/genkit-guard/scripts/download-model.js
 ```
-_ This downloads the models to ./models folder, the total size is ~1.5 GB ( 1GB for Openai/privacy-filter + .5 GB for MiniLM-L6-v2) 
+
+_This downloads the models to `./models`; the total size is approximately 1.5 GB._
+
+### Typed middleware API
+
+The public middleware contracts can be imported without depending on internal Genkit types:
+
+```ts
+import {
+  guard,
+  type GuardConfig,
+  type GuardContext,
+  type GuardRequest,
+} from "@intflows/genkit-guard";
+
+const config: GuardConfig = {
+  intent: {
+    mode: "semantic",
+    semantic: {
+      threshold: 0.7,
+      intents: { support: "Customer support questions" },
+    },
+  },
+};
+
+const middleware = guard(config);
+```
+
+Also exported: `GuardRunner`, `GuardHooks`, `GuardNext`, `GuardScopeResolver`,
+`GuardBlockedResponse`, `GuardLogSeverity`, and `InitGuardConfig`.
 
 ### 2. Update genkit
 

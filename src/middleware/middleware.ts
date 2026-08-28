@@ -3,6 +3,29 @@ import { analyzeIntentStructured, detectInjection } from '../intent/intentAnalyz
 import { detectPII } from '../pii/detector.js';
 import { PiiTokenizer } from '../pii/tokenizer.js';
 import { defaultPiiVaultStorage, type PiiVaultStorage } from '../pii/storage.js';
+import type {
+  GuardBlockedResponse,
+  GuardConfig,
+  GuardContext,
+  GuardHooks,
+  GuardLogSeverity,
+  GuardNext,
+  GuardRequest,
+  GuardRunner,
+  GuardScopeResolver,
+} from './types.js';
+
+export type {
+  GuardBlockedResponse,
+  GuardConfig,
+  GuardContext,
+  GuardHooks,
+  GuardLogSeverity,
+  GuardNext,
+  GuardRequest,
+  GuardRunner,
+  GuardScopeResolver,
+} from './types.js';
 
 const GUARD_CONTEXT_KEY = '__genkitGuard';
 
@@ -13,15 +36,15 @@ const guardConfigSchema = z.object({
     semantic: z.object({
       threshold: z.number().optional(),
       intents: z.record(z.string(), z.string()),
-    }),
+    }).optional(),
   }).optional(),
   pii: z.object({
     reversible: z.boolean().optional(),
     model: z.string().optional(),
     mode: z.enum(['ner', 'classifier']).optional(),
     vault: z.object({
-      storage: z.any().optional(),
-      scopeId: z.any().optional(),
+      storage: z.custom<PiiVaultStorage>().optional(),
+      scopeId: z.custom<string | GuardScopeResolver>().optional(),
     }).optional(),
   }).optional(),
   logging: z.object({
@@ -32,37 +55,7 @@ const guardConfigSchema = z.object({
   models: z.object({
     extractor: z.string().optional(),
   }).optional(),
-}).passthrough();
-
-export type GuardConfig = {
-  intent?: {
-    mode?: string;
-    allowedIntent?: string;
-    semantic?: {
-      threshold?: number;
-      intents: Record<string, string>;
-    };
-  };
-  pii?: {
-    reversible?: boolean;
-    model?: string;
-    mode?: 'ner' | 'classifier';
-    vault?: {
-      storage?: PiiVaultStorage;
-      scopeId?: string | ((req: any, ctx: any) => string | undefined);
-    };
-  };
-  logging?: {
-    enabled?: boolean;
-    level?: LogSeverity;
-    serviceName?: string;
-  };
-  models?: {
-    extractor?: string;
-  };
-  [key: string]: any;
-};
-type LogSeverity = 'debug' | 'info' | 'warn' | 'error';
+});
 
 interface GuardState {
   tokenizers: PiiTokenizer[];
@@ -74,21 +67,26 @@ export const guardMiddleware = generateMiddleware(
     description: 'Blocks prompt injection and disallowed intent, masks PII before model calls, restores PII for tool calls, and audits tool PII access.',
     configSchema: guardConfigSchema,
   },
-  ({ config }) => createGuardHooks(config)
+  ({ config }) => createGuardHooks(config) as never
 );
 
 export const guardPlugin = guardMiddleware.plugin;
 
-export function guard(config?: GuardConfig) {
+export function guard(config?: GuardConfig): GuardRunner {
   const hooks = createGuardHooks(config);
-  const baseMiddleware = guardMiddleware(config as any);
+  const baseMiddleware = guardMiddleware(config);
 
-  const fnRunner = async (req: any, ctxOrNext: any, maybeNext?: any) => {
+  const fnRunner = async (
+    req: GuardRequest,
+    ctxOrNext: GuardContext | ((request: GuardRequest) => unknown),
+    maybeNext?: GuardNext
+  ) => {
     if (typeof maybeNext === 'function') {
-      return hooks.model(req, ctxOrNext, maybeNext);
+      return hooks.model(req, ctxOrNext as GuardContext, maybeNext);
     }
 
-    return hooks.model(req, {}, async (modifiedReq: any) => ctxOrNext(modifiedReq || req));
+    const next = ctxOrNext as (request: GuardRequest) => unknown;
+    return hooks.model(req, {}, async (modifiedReq) => next(modifiedReq || req));
   };
 
   const source = Object.assign({}, baseMiddleware, hooks);
@@ -97,23 +95,23 @@ export function guard(config?: GuardConfig) {
     if (key === 'name') continue;
 
     Object.defineProperty(fnRunner, key, {
-      value: (source as any)[key],
+      value: (source as Record<string, unknown>)[key],
       writable: true,
       configurable: true,
       enumerable: true,
     });
   }
 
-  return fnRunner;
+  return fnRunner as GuardRunner;
 }
 
 export const guardAction = guard;
 
-function createGuardHooks(config?: GuardConfig) {
+export function createGuardHooks(config?: GuardConfig): GuardHooks {
   const logger = createLogger(config);
 
-  return {
-    model: async (req: any, ctx: any, next: any) => {
+  const hooks = {
+    model: async (req: GuardRequest, ctx: GuardContext, next: GuardNext) => {
       const input = getInputText(req);
 
       logger('info', 'guard.model.start', 'Starting guard checks for model request');
@@ -195,7 +193,7 @@ function createGuardHooks(config?: GuardConfig) {
       return unmaskedResponse;
     },
 
-    tool: async (req: any, ctx: any, next: any) => {
+    tool: async (req: GuardRequest, ctx: GuardContext, next: GuardNext) => {
       const state = getGuardState(ctx);
       const toolName = req?.toolRequest?.name;
 
@@ -240,15 +238,19 @@ function createGuardHooks(config?: GuardConfig) {
       return res;
     },
   };
+
+  return hooks as GuardHooks;
 }
 
-function getInputText(req: any): string {
+function getInputText(req: GuardRequest): string {
   if (typeof req.prompt === 'string') {
     return req.prompt;
   }
 
   const lastMessage = req.messages?.[req.messages.length - 1];
-  const firstContent = lastMessage?.content?.[0];
+  const firstContent = isRecord(lastMessage) && Array.isArray(lastMessage.content)
+    ? lastMessage.content[0]
+    : undefined;
 
   if (typeof firstContent?.text === 'string') {
     return firstContent.text;
@@ -261,7 +263,7 @@ function getInputText(req: any): string {
   return collectStrings(lastMessage).join('\n');
 }
 
-function collectModelRequestText(req: any): string {
+function collectModelRequestText(req: GuardRequest): string {
   return [
     ...collectStrings(req?.prompt),
     ...collectStrings(req?.messages),
@@ -269,7 +271,7 @@ function collectModelRequestText(req: any): string {
   ].join('\n');
 }
 
-async function maskModelRequest(req: any, tokenizer: PiiTokenizer, matches: { type: string; value: string }[]) {
+async function maskModelRequest(req: GuardRequest, tokenizer: PiiTokenizer, matches: { type: string; value: string }[]) {
   if (typeof req.prompt === 'string') {
     req.prompt = (await tokenizer.mask(req.prompt, matches)).maskedText;
   }
@@ -283,7 +285,7 @@ async function maskModelRequest(req: any, tokenizer: PiiTokenizer, matches: { ty
   }
 }
 
-async function unmaskObject(obj: any, tokenizers: PiiTokenizer[]) {
+async function unmaskObject<T>(obj: T, tokenizers: PiiTokenizer[]): Promise<T> {
   return transformStrings(obj, async (value) => {
     let result = value;
 
@@ -295,9 +297,9 @@ async function unmaskObject(obj: any, tokenizers: PiiTokenizer[]) {
   });
 }
 
-async function transformStrings(obj: any, transform: (value: string) => string | Promise<string>): Promise<any> {
+async function transformStrings<T>(obj: T, transform: (value: string) => string | Promise<string>): Promise<T> {
   if (typeof obj === 'string') {
-    return await transform(obj);
+    return await transform(obj) as T;
   }
 
   if (Array.isArray(obj)) {
@@ -308,8 +310,9 @@ async function transformStrings(obj: any, transform: (value: string) => string |
   }
 
   if (obj !== null && typeof obj === 'object') {
-    for (const key of Object.keys(obj)) {
-      obj[key] = await transformStrings(obj[key], transform);
+    const record = obj as Record<string, unknown>;
+    for (const key of Object.keys(record)) {
+      record[key] = await transformStrings(record[key], transform);
     }
     return obj;
   }
@@ -317,7 +320,7 @@ async function transformStrings(obj: any, transform: (value: string) => string |
   return obj;
 }
 
-function collectStrings(obj: any): string[] {
+function collectStrings(obj: unknown): string[] {
   if (typeof obj === 'string') {
     return [obj];
   }
@@ -347,18 +350,21 @@ async function scanPII(text: string, config?: GuardConfig) {
   });
 }
 
-function getGuardState(ctx: any = {}): GuardState {
+function getGuardState(ctx: GuardContext = {}): GuardState {
   ctx.context = ctx.context || {};
-  ctx.context[GUARD_CONTEXT_KEY] = ctx.context[GUARD_CONTEXT_KEY] || { tokenizers: [] };
-  return ctx.context[GUARD_CONTEXT_KEY];
+  const state = ctx.context[GUARD_CONTEXT_KEY];
+  if (isGuardState(state)) return state;
+  const newState: GuardState = { tokenizers: [] };
+  ctx.context[GUARD_CONTEXT_KEY] = newState;
+  return newState;
 }
 
-function pushTokenizer(ctx: any, tokenizer: PiiTokenizer) {
+function pushTokenizer(ctx: GuardContext, tokenizer: PiiTokenizer) {
   const state = getGuardState(ctx);
   state.tokenizers.push(tokenizer);
 }
 
-function createTokenizer(config: GuardConfig | undefined, req: any, ctx: any) {
+function createTokenizer(config: GuardConfig | undefined, req: GuardRequest, ctx: GuardContext) {
   const configuredScope = config?.pii?.vault?.scopeId;
   const scopeId = typeof configuredScope === 'function'
     ? configuredScope(req, ctx)
@@ -382,20 +388,20 @@ function createLogger(config?: GuardConfig) {
   const enabled = config?.logging?.enabled ?? true;
   const minimumLevel = config?.logging?.level ?? 'info';
   const serviceName = config?.logging?.serviceName ?? '@intflows/genkit-guard';
-  const levelRank: Record<LogSeverity, number> = {
+  const levelRank: Record<GuardLogSeverity, number> = {
     debug: 10,
     info: 20,
     warn: 30,
     error: 40,
   };
-  const severityNumber: Record<LogSeverity, number> = {
+  const severityNumber: Record<GuardLogSeverity, number> = {
     debug: 5,
     info: 9,
     warn: 13,
     error: 17,
   };
 
-  return (severity: LogSeverity, eventName: string, body: string, attributes: Record<string, any> = {}) => {
+  return (severity: GuardLogSeverity, eventName: string, body: string, attributes: Record<string, unknown> = {}) => {
     if (!enabled || levelRank[severity] < levelRank[minimumLevel]) {
       return;
     }
@@ -428,7 +434,7 @@ function createLogger(config?: GuardConfig) {
   };
 }
 
-function block(message: string, metadata?: any) {
+function block(message: string, metadata?: Record<string, unknown>): GuardBlockedResponse {
   return {
     finishReason: 'blocked',
     output: {
@@ -438,4 +444,12 @@ function block(message: string, metadata?: any) {
     },
     metadata,
   };
+}
+
+function isGuardState(value: unknown): value is GuardState {
+  return typeof value === 'object' && value !== null && Array.isArray((value as GuardState).tokenizers);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }

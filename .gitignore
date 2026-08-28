@@ -2,7 +2,7 @@
 models
 example/models/
 example/.genkit/
-package-lock.json
+example/package-lock.json
 
 # Logs
 logs
