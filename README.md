@@ -209,6 +209,7 @@ By default, PII is stored in an in-memory vault scoped to a single tokenizer ins
 That generated namespace prevents two concurrent calls from sharing the same visible placeholder names. Vault lookups are isolated by the configured storage scope, so User A and User B can safely produce their own email tokens without cross-resolving each other's PII.
 
 For applications that need persistence, distributed workers, audits, or tenant-specific storage, provide a vault storage backend. Redis clients can be passed through the built-in helper:
+For applications that need persistence, distributed workers, audits, or tenant-specific storage, provide a vault storage backend. Redis clients can be passed through the built-in helper:
 
 ```ts
 import { createClient } from "redis";
@@ -223,13 +224,20 @@ guard({
     vault: {
       storage: createRedisPiiVaultStorage(redis, {
         keyPrefix: "my-app:pii",
-        ttlSeconds: 3600
+        ttlSeconds: 3600,
+        fallbackToMemory: true
       }),
       scopeId: (req, ctx) => ctx?.auth?.sessionId ?? req?.metadata?.requestId
     }
   }
 });
 ```
+
+`ttlSeconds` applies the configured expiry to both the scoped vault and token index. When
+`fallbackToMemory` is enabled, successful writes are also mirrored in process memory and Redis
+operation failures fall back to that mirror. The fallback is disabled by default, is local to one
+process, and is not a replacement for Redis persistence or multi-worker availability. Its in-memory
+entries observe the same TTL. Redis errors continue to propagate when fallback is disabled.
 
 For another backend, use `createPiiVaultStorage({ get, set, entries, getByToken })` with your database, cache, or secret store.
 
