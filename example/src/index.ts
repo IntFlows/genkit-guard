@@ -93,7 +93,8 @@ export const integrationFlow = ai.defineFlow(
                     ttlSeconds: 3600,
                     fallbackToMemory: true,
                     }),
-                    scopeId: (req, ctx) => ctx?.auth?.sessionId ?? req?.metadata?.requestId
+                    scopeId: (req, ctx) =>
+                      ctx?.auth?.sessionId ?? req?.metadata?.requestId ?? "example-session"
                   },
                 } 
         }),

@@ -3,6 +3,7 @@ import { detectPII, privacyFilterOutputToMatches } from '../dist/pii/detector.js
 import { ModelSingleton, PRIVACY_FILTER_PIPELINE_TASK } from '../dist/util/singleton.js';
 import { InMemoryPiiVaultStorage } from '../dist/pii/storage.js';
 import { PiiTokenizer } from '../dist/pii/tokenizer.js';
+import { guard } from '../dist/index.js';
 
 assert.equal(PRIVACY_FILTER_PIPELINE_TASK, 'token-classification');
 
@@ -31,6 +32,7 @@ assert.deepEqual(
 assert.deepEqual(privacyFilterOutputToMatches(input, { invalid: true }), []);
 
 const originalGetPIIClassifier = ModelSingleton.getPIIClassifier;
+const originalGetExtractor = ModelSingleton.getExtractor;
 let receivedOptions;
 ModelSingleton.getPIIClassifier = async () => async (_text, options) => {
   receivedOptions = options;
@@ -61,4 +63,54 @@ try {
   ModelSingleton.getPIIClassifier = originalGetPIIClassifier;
 }
 
-console.log('Privacy Filter pipeline and masking tests passed.');
+// Reproduce a Genkit multi-turn response: an inner turn creates the token in one scope, while
+// the final response passes through middleware attached to another context and scope.
+const crossTurnStorage = new InMemoryPiiVaultStorage();
+const innerTurn = new PiiTokenizer({ scopeId: 'inner-turn', storage: crossTurnStorage });
+const crossTurnMasked = await innerTurn.mask('owner@example.com', [
+  { type: 'EMAIL', value: 'owner@example.com' },
+]);
+
+ModelSingleton.getExtractor = async () => async () => ({ tolist: () => [] });
+ModelSingleton.getPIIClassifier = async () => async () => [];
+
+try {
+  const middleware = guard({
+    intent: { semantic: { threshold: 0, intents: {} } },
+    pii: {
+      mode: 'classifier',
+      vault: { storage: crossTurnStorage, scopeId: 'outer-turn' },
+    },
+    logging: { enabled: false },
+  });
+
+  const response = await middleware.model(
+    { prompt: 'Fetch blob metadata' },
+    {},
+    async () => ({ answer: `File owner: ${crossTurnMasked.maskedText}` })
+  );
+  assert.deepEqual(response, { answer: 'File owner: owner@example.com' });
+
+  const unknownTokenResponse = await middleware.model(
+    { prompt: 'Fetch blob metadata' },
+    {},
+    async () => ({ answer: '[[EMAIL_unknownnamespace_99]]' })
+  );
+  assert.deepEqual(unknownTokenResponse, { answer: '[[EMAIL_unknownnamespace_99]]' });
+
+  let toolInput;
+  await middleware.tool(
+    { toolRequest: { name: 'sendEmail', input: { recipient: crossTurnMasked.maskedText } } },
+    {},
+    async (request) => {
+      toolInput = request.toolRequest.input;
+      return { sent: true };
+    }
+  );
+  assert.deepEqual(toolInput, { recipient: 'owner@example.com' });
+} finally {
+  ModelSingleton.getExtractor = originalGetExtractor;
+  ModelSingleton.getPIIClassifier = originalGetPIIClassifier;
+}
+
+console.log('Privacy Filter pipeline, masking and cross-turn unmasking tests passed.');

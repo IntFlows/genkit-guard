@@ -204,6 +204,10 @@ spans. Model-detected names, addresses, emails, phone numbers, URLs, dates, acco
 secrets are converted into reversible masking tokens. Regex rules continue to run as an additional
 layer, and duplicate spans are masked only once.
 
+During multi-turn tool execution, opaque tokens returned through a different Genkit middleware
+context are rehydrated from the configured vault before tool execution and before the final
+response is returned to the application.
+
 Preload the same mode during application startup:
 
 ```ts
