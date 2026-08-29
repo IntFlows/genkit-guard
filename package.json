@@ -22,7 +22,11 @@
     "huggingface"
   ],
   "license": "Apache-2.0",
+<<<<<<< HEAD
   "version": "0.0.13",
+=======
+  "version": "0.0.12",
+>>>>>>> b7f429e4b7fb107de4881ee6b1e744e38f380ec4
   "type": "module",
   "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
