@@ -199,6 +199,12 @@ function createGuardHooks(config?: GuardConfig) {
       const state = getGuardState(ctx);
       const toolName = req?.toolRequest?.name;
 
+      // Genkit may provide a fresh middleware context for a tool turn. Create a recovery
+      // tokenizer that uses the configured vault so opaque tokens can be rehydrated safely.
+      if (state.tokenizers.length === 0) {
+        state.tokenizers.push(createTokenizer(config, req, ctx));
+      }
+
       if (req?.toolRequest && 'input' in req.toolRequest) {
         req.toolRequest.input = await unmaskObject(req.toolRequest.input, state.tokenizers);
       }
@@ -288,6 +294,9 @@ async function unmaskObject(obj: any, tokenizers: PiiTokenizer[]) {
     let result = value;
 
     for (const tokenizer of tokenizers) {
+      // A token may have been produced by another model/tool turn with a different Genkit
+      // context or vault scope. Import only opaque tokens actually present in this value.
+      await tokenizer.importTokens(result);
       result = await tokenizer.unmask(result);
     }
 

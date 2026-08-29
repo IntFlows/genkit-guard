@@ -5,13 +5,15 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+export const PRIVACY_FILTER_PIPELINE_TASK = 'token-classification' as const;
+
 env.allowRemoteModels = false; 
 env.localModelPath = path.join(__dirname, '../../models'); 
 
 export class ModelSingleton {
   private static extractors: Map<string, any> = new Map();
   private static nerClassifiers: Map<string, any> = new Map();
-  private static textClassifiers: Map<string, any> = new Map();
+  private static privacyFilters: Map<string, any> = new Map();
 
   static init() {
     // Always resolve model path relative to the client app, not the library
@@ -66,12 +68,14 @@ export class ModelSingleton {
   }
 
   static async getPIIClassifier(modelName: string = 'openai/privacy-filter') {
-    if (!this.textClassifiers.has(modelName)) {
+    if (!this.privacyFilters.has(modelName)) {
       this.init();
-      const inst = await (pipeline as any)('text-classification', modelName);
-      this.textClassifiers.set(modelName, inst);
+      const inst = await (pipeline as any)(PRIVACY_FILTER_PIPELINE_TASK, modelName, {
+        dtype: 'q4',
+      });
+      this.privacyFilters.set(modelName, inst);
     }
-    return this.textClassifiers.get(modelName);
+    return this.privacyFilters.get(modelName);
   }
 
   static async preload(models?: { extractor?: string; ner?: string; pii?: string }) {

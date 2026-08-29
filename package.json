@@ -22,7 +22,11 @@
     "huggingface"
   ],
   "license": "Apache-2.0",
+<<<<<<< HEAD
+  "version": "0.0.13",
+=======
   "version": "0.0.12",
+>>>>>>> b7f429e4b7fb107de4881ee6b1e744e38f380ec4
   "type": "module",
   "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -34,9 +38,11 @@
   ],
   "scripts": {
     "prepare-models": "node scripts/download-model.js",
-    "build": "tsc",
-    "test": "npm run test:types && npm run test:storage && npm run test:concurrency",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc",
+    "test": "npm run test:types && npm run test:privacy-filter && npm run test:storage && npm run test:concurrency",
     "test:types": "tsc --noEmit --ignoreConfig --module NodeNext --moduleResolution NodeNext --target ESNext --strict --skipLibCheck scripts/test-types.ts",
+    "test:privacy-filter": "npm run build && node scripts/test-privacy-filter.js",
     "test:storage": "npm run build && node scripts/test-storage.js",
     "test:concurrency": "npm run build && node scripts/test-concurrent-vault.js",
     "test:redis": "npm run build && node scripts/test-redis-vault.js",

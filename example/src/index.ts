@@ -3,9 +3,13 @@ import { genkit, z } from "genkit";
 import { initGuard, guard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
 import { createClient } from "redis";
 
-await initGuard();
 const redis = createClient({ url: "redis://localhost:6379" });
+redis.on("error", (error) => console.error("Redis PII vault error:", error));
 await redis.connect();
+await redis.ping();
+
+// Initialise the configured PII model only after required infrastructure is ready.
+await initGuard({ pii: { mode: "classifier" } });
 
 
 const ai = genkit({
@@ -82,13 +86,15 @@ export const integrationFlow = ai.defineFlow(
           },
           pii: { 
                  reversible: true,
+                 mode: "classifier",
                  vault: {
                     storage: createRedisPiiVaultStorage(redis, {
                     keyPrefix: "genkit-app:pii",
                     ttlSeconds: 3600,
                     fallbackToMemory: true,
                     }),
-                    scopeId: (req, ctx) => ctx?.auth?.sessionId ?? req?.metadata?.requestId
+                    scopeId: (req, ctx) =>
+                      ctx?.auth?.sessionId ?? req?.metadata?.requestId ?? "example-session"
                   },
                 } 
         }),
@@ -114,8 +120,16 @@ async function main() {
   // We explicitly embed the PII data directly into the target string required by the tool call
   const targetPrompt = input || "Fetch metadata for the blob named 'sensitive-user-data-john.doe@example.com.json' inside Azure Blob Storage.";
   
-  const result = await integrationFlow({ question: targetPrompt });
-  console.log('Final Flow Return Object to Client:', result);
+  try {
+    const result = await integrationFlow({ question: targetPrompt });
+    console.log('Final Flow Return Object to Client:', result);
+  } finally {
+    await redis.close();
+  }
 }
 
-main().catch(console.error);
+main().catch(async (error) => {
+  console.error(error);
+  if (redis.isOpen) await redis.close();
+  process.exitCode = 1;
+});

@@ -63,7 +63,7 @@ npm install @intflows/genkit-guard
 # Download Local Models (Only needed once)
 node node_modules/@intflows/genkit-guard/scripts/download-model.js
 ```
-_ This downloads the models to ./models folder, the total size is ~1.5 GB ( 1GB for Openai/privacy-filter + .5 GB for MiniLM-L6-v2) 
+_This downloads the models to `./models`; the total size is approximately 1.5 GB._
 
 ### 2. Update genkit
 
@@ -194,8 +194,24 @@ intent: {
 
 ```ts
 pii: {
-  reversible: true
+  reversible: true,
+  mode: "classifier"
 }
+```
+
+`classifier` mode uses `openai/privacy-filter` as a token-classification model with aggregated
+spans. Model-detected names, addresses, emails, phone numbers, URLs, dates, account numbers and
+secrets are converted into reversible masking tokens. Regex rules continue to run as an additional
+layer, and duplicate spans are masked only once.
+
+During multi-turn tool execution, opaque tokens returned through a different Genkit middleware
+context are rehydrated from the configured vault before tool execution and before the final
+response is returned to the application.
+
+Preload the same mode during application startup:
+
+```ts
+await initGuard({ pii: { mode: "classifier" } });
 ```
 
 ### **PII Vault Isolation and External Storage**
