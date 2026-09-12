@@ -67,9 +67,10 @@ export async function detectInjection(userInput: string) {
 export async function analyzeIntentStructured(
   input: string,
   intents: Record<string, string>,
-  threshold: number
+  threshold: number,
+  model?: string
 ) {
-  const extractor = await ModelSingleton.getExtractor();
+  const extractor = await ModelSingleton.getExtractor(model);
 
   let bestIntent = '';
   let bestScore = 0;

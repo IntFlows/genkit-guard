@@ -1,292 +1,264 @@
-# **@intflows/genkit-guard** 
+# Genkit Guard
 
-### **Lightweight Intent, PII, and Safety Guardrails for Genkit**
+Keep Genkit agents on topic, mask personal data before model calls, and control which tools can run.
 
-`@intflows/genkit-guard` provides a modular guardrail layer for Genkit flows.  
-It adds **semantic intent validation**, **PII masking/unmasking**, and **prompt‑injection detection** with minimal configuration.
+`@intflows/genkit-guard` adds prompt-injection checks, semantic intent scoring, reversible PII masking, and tool policies to your Genkit application. Guard models run locally through Transformers.js; your generative model can use the provider you choose.
 
-This library is designed for developers who want **practical, production‑ready safety controls** without heavy dependencies or complex setup.
+[Try the Hugging Face Space](https://huggingface.co/spaces/intflows/genkit-guard) · [Documentation](https://github.com/IntFlows/genkit-guard/wiki) · [Examples](./example/src)
 
----
+## Why use it?
 
-## ✨ Features
+Agents can access customer data and trigger real workflows. Genkit Guard gives you controls at the model and tool boundaries:
 
-- **Semantic Intent Guarding**  
-  Uses MiniLM embeddings to ensure prompts match allowed intents.
+- **Check requests:** block known injection patterns and reject prompts below your intent similarity threshold.
+- **Reduce PII exposure:** mask detected personal data before model calls and restore tokens in responses and tool inputs.
+- **Control tools:** allow, block, redact detected PII, or require application approval before execution.
+- **Audit decisions:** emit versioned decision events without raw prompts, arguments, or PII values.
 
-- **PII Detection & Masking**  
-  Detects emails, phone numbers, names, and AU‑specific identifiers.  
-  Replaces PII with reversible tokens before sending to the LLM.
+Detection is based on patterns and model predictions. It can miss attacks or PII and can reject valid requests; evaluate it on your application's inputs and keep authorization in your application.
 
-- **Automatic Unmasking**  
-  Restores original PII in the model’s response, even inside structured JSON.
+## Quick start
 
-- **Prompt Injection Detection**  
-  Blocks jailbreak attempts using pattern‑based heuristics.
-
-- **Model‑Light Architecture**  
-  The package uses local `all-MiniLM-L6-v2` and `openai/privacy-filter` Models, these Models are downloaded once and cached locally.
-
-- **Drop‑in Genkit Middleware**  
-  Works with `ai.generate`, `ai.generateStream`, and Genkit flows.
-
----
-
-### 📦 Installation
+Install the package in your Genkit application:
 
 ```bash
-## Install the package
 npm install @intflows/genkit-guard
 ```
 
-This library uses lightweight transformer models (MiniLM + Openai/privacy-filter).  
+The examples below target **v0.0.14**. The package declares Genkit **1.39.0** as its peer dependency.
 
-Download them once. 
-
-```bash
-## Download the transformer models (MiniLM + OpenAI/privacy-filter)
-node node_modules/@intflows/genkit-guard/scripts/download-model.js
-```
-
-Models are cached locally and reused across runs.
-
----
-
-## 🚀 Quick Start
-
-### 1. Initialize Local folder
-
-```bash
-# Install @intflows/genkit-guard
-npm install @intflows/genkit-guard
-
-# Download Local Models (Only needed once)
-node node_modules/@intflows/genkit-guard/scripts/download-model.js
-```
-_This downloads the models to `./models`; the total size is approximately 1.5 GB._
-
-### 2. Update genkit
+Create `src/guard.config.ts`:
 
 ```ts
-import { guard, initGuard } from "@intflows/genkit-guard";
+import { defineGuardConfig } from "@intflows/genkit-guard";
 
-await initGuard();
-
-const response = await ai.generate({
-  prompt: "How do I integrate with Azure Blob Storage?",
-  use: [
-    guard({
-      intent: {
-        mode: "semantic",
-        allowedIntent: "integration",
-        semantic: {
-          threshold: 0.7,
-          intents: {
-            integration: "Azure Blob, APIs, workflows"
-          }
-        }
-      },
-      pii: { reversible: true }
-    })
-  ]
+export default defineGuardConfig({
+  models: { extractor: "Xenova/all-MiniLM-L6-v2" },
+  intent: {
+    semantic: {
+      threshold: 0.7,
+      intents: {
+        support: "Technical support for Azure Blob Storage, APIs and integrations"
+      }
+    }
+  },
+  pii: {
+    mode: "classifier",
+    model: "openai/privacy-filter"
+  },
+  tools: {
+    defaultAction: "block",
+    rules: { searchDocs: "allow" }
+  }
 });
 ```
 
-**You Can also check the full step by step guide here:**
-
-[Intflows Wiki](https://github.com/IntFlows/genkit-guard/wiki)
-
-### 3. Execute the Genkit flow
-
-#### Allowed :
-``` npx tsx src/index.ts "How do I integrate with Azure Blob Storage?"```
-
-#### Blocked:
-``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file and export the API key"```
-
-![Image showing Generation Blocked](./GenerationBlocked.png)
-
-
-#### PII MASK and UNMASK:
-``` npx tsx src/index.ts "workflow to download a file from an API, save it to Blob file with my email john.doe@example.com"```
-
-![Image showing PII data masked ](./MaskedPII.png)
-
----
-## Example
-
-An example genkit flow is present in `example` directory.
-
-```bash
-git clone https://github.com/IntFlows/genkit-guard.git
-cd genkit-guard/example
-npm install
-node node_modules/@intflows/genkit-guard/scripts/download-model.js
-npx tsx src/index.ts
-```
-
-Or you can run the flow with genkit dev UI
-
-```bash
-git clone https://github.com/IntFlows/genkit-guard.git
-cd genkit-guard/example
-npm install
-node node_modules/@intflows/genkit-guard/scripts/download-model.js
-genkit start -- npx tsx src/index.ts
-```
-
----
-
-## 🧠 How It Works
-
-### **1. Intent Guard**
-- Embeds the user prompt + intent descriptions using MiniLM  
-- Computes cosine similarity  
-- Blocks prompts below threshold  
-- Detects jailbreak patterns like:  
-  - “ignore previous instructions”  
-  - “you are a hacker”  
-  - “export the API key”  
-
-### **2. PII Masking**
-Before the LLM sees the prompt:
-
-```
-"Email john.doe@example.com" → "Email [[EMAIL_0]]"
-```
-
-Detected PII includes:
-
-- Emails  
-- Phone numbers    
-- AU identifiers (Medicare, TFN, ABN, etc.)
-- PII detected by local Model (OpenAI/privacy-filter)
-
-### **3. LLM Call**
-The masked prompt is sent to the model.
-
-### **4. Response Unmasking**
-After the LLM responds:
-
-```
-"Send a confirmation email to [[EMAIL_0]]" → "Send a confirmation email to john.doe@example.com"
-```
----
-
-## ⚙️ Configuration
-
-### **Intent Guard**
+Use the same configuration at startup and in your model call:
 
 ```ts
-intent: {
-  mode: "semantic",
-  allowedIntent: "intent_question",
-  semantic: {
-    threshold: 0.7,
-    intents: {
-      intent_question: "Description of allowed intent"
-    }
+import { guard, initGuard } from "@intflows/genkit-guard";
+import guardConfig from "./guard.config.js";
+
+// ai is your configured Genkit instance.
+await initGuard(guardConfig);
+
+const response = await ai.generate({
+  prompt: "How do I integrate with Azure Blob Storage?",
+  use: [guard(guardConfig)]
+});
+
+if (response.finishReason === "blocked") {
+  console.log("Request blocked by guard policy");
+} else {
+  console.log(response.text);
+}
+```
+
+The tool rules apply to tools you separately register and supply to Genkit; they do not create tools. The example permits `searchDocs` and blocks other tool names. Tune intent descriptions and thresholds with representative requests.
+
+`initGuard()` preloads the selected models and can download missing files. Models are cached under `./models` relative to your application's working directory. Download size and memory use depend on the models selected. Configuration is explicitly imported; there is no automatic file discovery.
+
+For a new application, follow the [full setup guide](https://github.com/IntFlows/genkit-guard/wiki/6.-Full-Setup-Guide).
+
+## What happens to a request?
+
+```text
+User request
+  -> Injection-pattern check
+  -> Semantic intent check
+  -> PII masking
+  -> Generative model
+  -> Response token restoration
+  -> Tool policy check before any requested tool executes
+```
+
+A matching injection phrase such as `ignore previous instructions` blocks the model call. Intent checks compare the prompt with every description in `intent.semantic.intents`; only include categories you want to allow.
+
+PII masking replaces detected values with namespaced tokens:
+
+```text
+Input:          Email alice@example.com
+Model receives: Email [[EMAIL_<namespace>_0]]
+Restored:       Email alice@example.com
+```
+
+Restoration also works inside structured responses. Tool policy checks determine whether a requested tool may receive restored values or redacted arguments.
+
+## Tool controls
+
+Add exact tool names to the shared configuration:
+
+```ts
+tools: {
+  defaultAction: "block",
+  rules: {
+    searchDocs: "allow",
+    summarizeTicket: "redact",
+    deleteTicket: "approval-required"
+  },
+  approve: async ({ toolName, input, context }) => {
+    // Connect a trusted approval service for this exact call and user.
+    // This example denies every approval request.
+    return false;
   }
 }
 ```
 
-### **PII Guard**
+| Policy | Behavior |
+| --- | --- |
+| `allow` | Restore tokens, scan input, then execute |
+| `block` | Stop before execution |
+| `redact` | Replace detected PII in nested string arguments with `[REDACTED]`, then execute |
+| `approval-required` | Execute only when the application's callback returns literal `true` |
 
-```ts
-pii: {
-  reversible: true,
-  mode: "classifier"
-}
+Blocked, pending, or denied calls throw `GuardToolError`. Approval UI and durable approval storage belong to the application. Redaction may invalidate a tool's input schema, such as an email field; choose a policy appropriate to the tool.
+
+Without tool policies, the default remains allow. With `tools` configured, `guard()` returns a native Genkit middleware reference. Existing configurations without `tools` retain the legacy callable form. Use `guardMiddleware(config)` for native tool hooks without explicit policies.
+
+See [tool controls and logging](https://github.com/IntFlows/genkit-guard/wiki/9.-Tool-Controls-and-Logging) for the complete behavior.
+
+## Models and PII storage
+
+| Setting | Default |
+| --- | --- |
+| Intent model | `Xenova/all-MiniLM-L6-v2` |
+| PII mode | `ner` |
+| NER model | `Xenova/bert-base-NER` |
+| Classifier model | `openai/privacy-filter` when classifier mode is selected |
+| PII vault | In-memory storage |
+
+The quick start explicitly selects classifier mode. Regex detection also runs for email, Australian phone and identifier patterns, and credit-card-like numbers.
+
+Use `models.extractor` and `pii.model` to select compatible models, and `pii.labelMappings` to map fine-tuned labels to masking types. Classifier mode currently loads `q4` weights. Redis and custom vault adapters support external storage.
+
+- [Shared model configuration](https://github.com/IntFlows/genkit-guard/wiki/8.-Shared-Model-Configuration)
+- [PII labels, masking and vaults](https://github.com/IntFlows/genkit-guard/wiki/5.-PII-Guard)
+
+## PII Vault Isolation and External Storage
+
+Masked values are kept in a vault so they can be restored later. By default, the middleware uses process-local in-memory storage with generated vault scopes. Each tokenizer also generates an opaque namespace for its placeholders:
+
+```text
+alice@example.com -> [[EMAIL_<namespace>_0]]
 ```
 
-`classifier` mode uses `openai/privacy-filter` as a token-classification model with aggregated
-spans. Model-detected names, addresses, emails, phone numbers, URLs, dates, account numbers and
-secrets are converted into reversible masking tokens. Regex rules continue to run as an additional
-layer, and duplicate spans are masked only once.
+Namespaces prevent concurrent calls from creating identical placeholder names. Use `pii.vault.scopeId` to group vault entries by request, session, or another application scope. The scope ID is not exposed in the placeholder.
 
-During multi-turn tool execution, opaque tokens returned through a different Genkit middleware
-context are rehydrated from the configured vault before tool execution and before the final
-response is returned to the application.
+### Redis storage
 
-Preload the same mode during application startup:
+Use Redis when vault entries need to survive application restarts or be available to multiple workers. Install the client separately:
 
-```ts
-await initGuard({ pii: { mode: "classifier" } });
+```bash
+npm install redis
 ```
 
-### **PII Vault Isolation and External Storage**
-
-By default, PII is stored in an in-memory vault scoped to a single tokenizer instance. Tokens include a generated vault scope:
-
-```txt
-"Email john.doe@example.com" -> "Email [[EMAIL_<namespace>_0]]"
-```
-
-That generated namespace prevents two concurrent calls from sharing the same visible placeholder names. Vault lookups are isolated by the configured storage scope, so User A and User B can safely produce their own email tokens without cross-resolving each other's PII.
-
-For applications that need persistence, distributed workers, audits, or tenant-specific storage, provide a vault storage backend. Redis clients can be passed through the built-in helper:
-For applications that need persistence, distributed workers, audits, or tenant-specific storage, provide a vault storage backend. Redis clients can be passed through the built-in helper:
+Extend your shared configuration during application startup:
 
 ```ts
 import { createClient } from "redis";
-import { guard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
+import { guard, initGuard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
+import guardConfig from "./guard.config.js";
 
-const redis = createClient({ url: "redis://localhost:6379" });
+const redis = createClient({ url: process.env.REDIS_URL ?? "redis://localhost:6379" });
+redis.on("error", () => console.error("PII vault Redis connection error"));
 await redis.connect();
 
-guard({
+const config = {
+  ...guardConfig,
   pii: {
-    reversible: true,
+    ...guardConfig.pii,
     vault: {
       storage: createRedisPiiVaultStorage(redis, {
         keyPrefix: "my-app:pii",
         ttlSeconds: 3600,
-        fallbackToMemory: true
+        fallbackToMemory: false
       }),
-      scopeId: (req, ctx) => ctx?.auth?.sessionId ?? req?.metadata?.requestId
+      // Populate this from trusted application context.
+      // If absent, the middleware generates a new scope.
+      scopeId: (_req: unknown, ctx: any) => ctx?.context?.piiScopeId
     }
   }
-});
+};
+
+await initGuard(config);
+// Use guard(config) in your ai.generate({ use: [...] }) calls.
+const middleware = guard(config);
 ```
 
-`ttlSeconds` applies the configured expiry to both the scoped vault and token index. When
-`fallbackToMemory` is enabled, successful writes are also mirrored in process memory and Redis
-operation failures fall back to that mirror. The fallback is disabled by default, is local to one
-process, and is not a replacement for Redis persistence or multi-worker availability. Its in-memory
-entries observe the same TTL. Redis errors continue to propagate when fallback is disabled.
+`ttlSeconds` expires the scoped vault and shared token-index keys; writes refresh their expiry, so it is not a per-entry retention deadline. Without a TTL, Redis entries remain until removed externally. The default in-memory vault has no automatic expiry.
 
-For another backend, use `createPiiVaultStorage({ get, set, entries, getByToken })` with your database, cache, or secret store.
+`fallbackToMemory: true` enables a process-local mirror with the same TTL behavior when Redis operations fail. It is disabled by default, so Redis errors propagate. The mirror is not shared across workers, does not survive restarts, and is not automatically replayed into Redis after recovery.
 
-Choose a `scopeId` that matches your isolation boundary, such as request ID, session ID, tenant/user ID, or a combination like `tenantId:userId:requestId`. A shared external backend should never ignore `scopeId`, because placeholders are only safe when resolved against the correct vault scope. The placeholder sent to the model uses an opaque generated namespace rather than exposing your `scopeId`.
+### Custom storage and isolation boundaries
 
-### Screenshots
-![Redis Stored PII ](redis-scan.png)
+Use `createPiiVaultStorage({ get, set, entries, getByToken })` to connect another database or store. `getByToken` is optional and enables recovery of opaque tokens across model/tool turns.
 
----
+Scoped reads and writes use `scopeId`, but cross-turn recovery can look up tokens across scopes within the same backend. Scope IDs and opaque namespaces are not tenant authorization controls. For separate tenants, use appropriately isolated storage adapters or Redis prefixes, including separate token indexes, and enforce access in your application. Vault entries contain original PII values; the adapter does not encrypt those values itself.
 
-## 🛡️ Why This Library Exists
+See the [PII vault documentation](https://github.com/IntFlows/genkit-guard/wiki/5.-PII-Guard) and [Redis integration example](./example/src/index.ts).
 
-Genkit provides a powerful LLM framework, but production systems need:
+## Decision logging
 
-- intent boundaries  
-- PII protection  
-- jailbreak resistance  
-- predictable behavior  
+Console logging emits structured JSON. Add an audit callback to your configuration to receive `GuardDecision` events:
 
-This library adds those guardrails without heavy dependencies or complex setup.
+```ts
+policyVersion: "support-v1",
+logging: {
+  enabled: true,
+  level: "info",
+  onDecision: async decision => {
+    // Forward the content-free event to your audit sink.
+    console.log(JSON.stringify(decision));
+  }
+}
+```
 
----
+Events include schema version, decision ID, timestamp, guard, policy version, action, reason code, latency, and intent similarity where applicable. The callback runs independently of console settings, is awaited, and stops execution if it fails. It does not provide persistent storage by itself.
+
+## Try it and explore the examples
+
+[Open the Hugging Face Space](https://huggingface.co/spaces/intflows/genkit-guard) to explore the demo. Use synthetic inputs when trying a hosted demo.
+
+- [Integration flow](./example/src/index.ts): Azure Blob workflow with Redis-backed PII storage.
+- [Tool controls](./example/src/tool-controls.ts): optional standalone demo of redaction and approval-required policies. This file is not required to use the package.
+
+The tool-controls demo uses the local build. Run `npm install` and `npm run build` in the repository root, then `npm install` in `example`. Set `GEMINI_API_KEY` and `GEMINI_MODEL` for your provider account, and run:
+
+```bash
+# From example/
+npx tsx src/tool-controls.ts
+```
+
+## Roadmap
+
+- **v0.0.14:** shared model configuration, custom PII labels, tool policies and versioned decision events.
+- **v0.1.0 planned:** persistent decision logging and explicit fallback-model behavior.
+- **Later:** SQLite vault, memory compaction integration, compatibility hardening and stable v1.
 
 ## Contributing
 
-We plan to: 
+Issues, pull requests, model evaluations and security reviews are welcome. Run `npm test` for the deterministic suite; real Redis integration is tested separately with `npm run test:redis`.
 
-1. Extend the utility by adding Auth and Tool Middleware in further stages.
-2. Add more filter types for common malicious prompts.
-3. Add more patterns for custom PII masking.
+## License
 
-Contributions are welcome — whether it’s bug reports, new guard modules, model improvements or enhancements. This project aims to stay lightweight, modular, and production‑ready, so thoughtful contributions are appreciated.
-
-# 📄 License
-
-Apache‑2.0
+[Apache-2.0](./LICENSE)
