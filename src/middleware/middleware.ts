@@ -272,6 +272,12 @@ function createGuardHooks(config?: GuardConfig) {
         state.tokenizers.push(createTokenizer(config, req, ctx));
       }
 
+      // Genkit may provide a fresh middleware context for a tool turn. Create a recovery
+      // tokenizer that uses the configured vault so opaque tokens can be rehydrated safely.
+      if (state.tokenizers.length === 0) {
+        state.tokenizers.push(createTokenizer(config, req, ctx));
+      }
+
       if (req?.toolRequest && 'input' in req.toolRequest) {
         req.toolRequest.input = await unmaskObject(req.toolRequest.input, state.tokenizers);
       }
