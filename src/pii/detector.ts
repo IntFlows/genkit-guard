@@ -1,3 +1,4 @@
+import type { PiiLabelMappings } from '../guard.config.js';
 import { ModelSingleton } from '../util/singleton.js';
 
 export type PiiMatch = { type: string; value: string };
@@ -45,7 +46,7 @@ const REGEX_RULES = [
   { type: 'CREDIT_CARD', pattern: /\b(?:\d[ -]*?){13,16}\b/g }
 ];
 
-export async function detectPII(text: string, opts?: { model?: string; mode?: 'ner' | 'classifier' }) {
+export async function detectPII(text: string, opts?: { model?: string; mode?: 'ner' | 'classifier'; labelMappings?: PiiLabelMappings }) {
   const mode = opts?.mode ?? 'ner';
   const model = opts?.model;
 
@@ -64,7 +65,10 @@ export async function detectPII(text: string, opts?: { model?: string; mode?: 'n
     const entities = await ner(text);
 
     for (const e of entities) {
-      if (e.entity && e.entity.includes('PER')) {
+      const mappedType = mappedLabel(e.entity_group ?? e.entity, opts?.labelMappings);
+      if (mappedType !== undefined) {
+        if (mappedType) results.push(...privacyFilterOutputToMatches(text, [e], opts?.labelMappings));
+      } else if (e.entity && e.entity.includes('PER')) {
         results.push({ type: 'NAME', value: (e.word || '').replace(/##/g, '') });
       }
     }
@@ -73,7 +77,7 @@ export async function detectPII(text: string, opts?: { model?: string; mode?: 'n
     // rather than individual BIOES-labelled tokens.
     const cls = await ModelSingleton.getPIIClassifier(model);
     classifierOutput = await cls(text, { aggregation_strategy: 'simple' });
-    for (const match of privacyFilterOutputToMatches(text, classifierOutput)) {
+    for (const match of privacyFilterOutputToMatches(text, classifierOutput, opts?.labelMappings)) {
       if (!results.some((existing) => existing.value === match.value)) {
         results.push(match);
       }
@@ -86,7 +90,7 @@ export async function detectPII(text: string, opts?: { model?: string; mode?: 'n
   };
 }
 
-export function privacyFilterOutputToMatches(text: string, output: unknown): PiiMatch[] {
+export function privacyFilterOutputToMatches(text: string, output: unknown, labelMappings?: PiiLabelMappings): PiiMatch[] {
   if (!Array.isArray(output)) return [];
 
   const matches: PiiMatch[] = [];
@@ -98,7 +102,8 @@ export function privacyFilterOutputToMatches(text: string, output: unknown): Pii
     if (typeof rawLabel !== 'string') continue;
 
     const label = rawLabel.replace(/^[BIES]-/, '').toLowerCase();
-    const type = PRIVACY_FILTER_TYPE_MAP[label];
+    const customType = mappedLabel(rawLabel, labelMappings);
+    const type = customType !== undefined ? customType : (Object.hasOwn(PRIVACY_FILTER_TYPE_MAP, label) ? PRIVACY_FILTER_TYPE_MAP[label] : undefined);
     if (!type) continue;
 
     let value: string | undefined;
@@ -121,4 +126,16 @@ export function privacyFilterOutputToMatches(text: string, output: unknown): Pii
   }
 
   return matches;
+}
+
+function mappedLabel(label: unknown, mappings?: PiiLabelMappings): string | null | undefined {
+  if (typeof label !== 'string' || !mappings) return undefined;
+  const normalize = (value: string) => value.replace(/^[BIES]-/i, '').toLowerCase();
+  const entry = Object.entries(mappings).find(([key]) => normalize(key) === normalize(label));
+  if (!entry) return undefined;
+  const type = entry[1];
+  if (type !== null && !/^[A-Z_]+$/.test(type)) {
+    throw new Error('PII label mapping types must contain only uppercase letters and underscores');
+  }
+  return type;
 }

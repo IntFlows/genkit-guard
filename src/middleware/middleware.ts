@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { GuardToolError, type GuardDecision, type GuardAction, type ToolGuardConfig } from '../core/decision.js';
+import { resolveGuardModels, type PiiLabelMappings } from '../guard.config.js';
 import { generateMiddleware, z } from 'genkit';
 import { analyzeIntentStructured, detectInjection } from '../intent/intentAnalyzer.js';
 import { detectPII } from '../pii/detector.js';
@@ -6,7 +9,14 @@ import { defaultPiiVaultStorage, type PiiVaultStorage } from '../pii/storage.js'
 
 const GUARD_CONTEXT_KEY = '__genkitGuard';
 
+const toolActionSchema = z.enum(['allow', 'block', 'redact', 'approval-required']);
 const guardConfigSchema = z.object({
+  policyVersion: z.string().optional(),
+  tools: z.object({
+    defaultAction: toolActionSchema.optional(),
+    rules: z.record(z.string(), toolActionSchema).optional(),
+    approve: z.any().optional(),
+  }).optional(),
   intent: z.object({
     mode: z.string().optional(),
     allowedIntent: z.string().optional(),
@@ -19,6 +29,7 @@ const guardConfigSchema = z.object({
     reversible: z.boolean().optional(),
     model: z.string().optional(),
     mode: z.enum(['ner', 'classifier']).optional(),
+    labelMappings: z.record(z.string(), z.string().regex(/^[A-Z_]+$/).nullable()).optional(),
     vault: z.object({
       storage: z.any().optional(),
       scopeId: z.any().optional(),
@@ -28,6 +39,7 @@ const guardConfigSchema = z.object({
     enabled: z.boolean().optional(),
     level: z.enum(['debug', 'info', 'warn', 'error']).optional(),
     serviceName: z.string().optional(),
+    onDecision: z.any().optional(),
   }).optional(),
   models: z.object({
     extractor: z.string().optional(),
@@ -35,6 +47,8 @@ const guardConfigSchema = z.object({
 }).passthrough();
 
 export type GuardConfig = {
+  policyVersion?: string;
+  tools?: ToolGuardConfig;
   intent?: {
     mode?: string;
     allowedIntent?: string;
@@ -47,6 +61,7 @@ export type GuardConfig = {
     reversible?: boolean;
     model?: string;
     mode?: 'ner' | 'classifier';
+    labelMappings?: PiiLabelMappings;
     vault?: {
       storage?: PiiVaultStorage;
       scopeId?: string | ((req: any, ctx: any) => string | undefined);
@@ -56,6 +71,8 @@ export type GuardConfig = {
     enabled?: boolean;
     level?: LogSeverity;
     serviceName?: string;
+    /** Awaited audit callback, independent of console logging level/enabled. Failure stops execution. */
+    onDecision?: (decision: GuardDecision) => void | Promise<void>;
   };
   models?: {
     extractor?: string;
@@ -79,9 +96,20 @@ export const guardMiddleware = generateMiddleware(
 
 export const guardPlugin = guardMiddleware.plugin;
 
-export function guard(config?: GuardConfig) {
+type GuardHooks = ReturnType<typeof createGuardHooks>;
+type NativeGuard = ReturnType<typeof guardMiddleware> & GuardHooks;
+type LegacyGuard = ((req: any, ctxOrNext: any, maybeNext?: any) => Promise<any>) & GuardHooks;
+
+export function guard(config: GuardConfig & { tools: ToolGuardConfig }): NativeGuard;
+export function guard(config?: GuardConfig & { tools?: undefined }): LegacyGuard;
+export function guard(config: GuardConfig): NativeGuard | LegacyGuard;
+export function guard(config?: GuardConfig): NativeGuard | LegacyGuard {
   const hooks = createGuardHooks(config);
   const baseMiddleware = guardMiddleware(config as any);
+
+  // Genkit treats every function as legacy model-only middleware, ignoring tool hooks.
+  // New tool policies must use a native reference; legacy configurations stay callable.
+  if (config?.tools) return Object.assign(baseMiddleware, hooks);
 
   const fnRunner = async (req: any, ctxOrNext: any, maybeNext?: any) => {
     if (typeof maybeNext === 'function') {
@@ -104,16 +132,29 @@ export function guard(config?: GuardConfig) {
     });
   }
 
-  return fnRunner;
+  return fnRunner as LegacyGuard;
 }
 
 export const guardAction = guard;
 
 function createGuardHooks(config?: GuardConfig) {
   const logger = createLogger(config);
+  const models = resolveGuardModels(config);
+  const decide = async (start: number, fields: Pick<GuardDecision, 'guard' | 'action' | 'reasonCode'> & { confidence?: number }) => {
+    const decision: GuardDecision = Object.freeze({
+      schemaVersion: '1', decisionId: randomUUID(), timestamp: new Date().toISOString(),
+      policyVersion: config?.policyVersion ?? 'unversioned',
+      latencyMs: Math.max(0, performance.now() - start), ...fields,
+    });
+    logger(decision.action === 'block' || decision.action === 'approval-required' ? 'warn' : 'info',
+      'guard.decision', 'Guard policy decision', { decision });
+    await config?.logging?.onDecision?.(decision);
+    return decision;
+  };
 
   return {
     model: async (req: any, ctx: any, next: any) => {
+      const started = performance.now();
       const input = getInputText(req);
 
       logger('info', 'guard.model.start', 'Starting guard checks for model request');
@@ -124,17 +165,21 @@ function createGuardHooks(config?: GuardConfig) {
           reason: 'pattern_match',
         });
 
+        await decide(started, { guard: 'injection', action: 'block', reasonCode: 'INJECTION_PATTERN' });
         return block('Prompt injection detected', {
           reason: 'pattern_match',
         });
       }
 
+      await decide(started, { guard: 'injection', action: 'allow', reasonCode: 'INJECTION_CLEAR' });
+      const intentStarted = performance.now();
       logger('info', 'guard.intent.analysis.start', 'Analyzing request intent');
 
       const intentResult = await analyzeIntentStructured(
         input,
         config?.intent?.semantic?.intents ?? {},
-        config?.intent?.semantic?.threshold ?? 0.7
+        config?.intent?.semantic?.threshold ?? 0.7,
+        models.extractor
       );
 
       logger('info', 'guard.intent.analysis.complete', 'Intent analysis completed', {
@@ -143,6 +188,11 @@ function createGuardHooks(config?: GuardConfig) {
         allowed: intentResult.allowed,
       });
 
+      await decide(intentStarted, {
+        guard: 'intent', action: intentResult.allowed ? 'allow' : 'block',
+        reasonCode: intentResult.allowed ? 'INTENT_ALLOWED' : 'INTENT_REJECTED',
+        confidence: intentResult.score,
+      });
       if (!intentResult.allowed) {
         logger('warn', 'guard.intent.blocked', 'Intent not allowed', {
           intent: intentResult.intent,
@@ -155,6 +205,7 @@ function createGuardHooks(config?: GuardConfig) {
         });
       }
 
+      const piiStarted = performance.now();
       const textForPii = collectModelRequestText(req);
       const piiResponse = await scanPII(textForPii, config);
       const piiMatches = piiResponse?.matches || [];
@@ -164,6 +215,8 @@ function createGuardHooks(config?: GuardConfig) {
       await tokenizer.importTokens(textForPii);
       await maskModelRequest(req, tokenizer, piiMatches);
       pushTokenizer(ctx, tokenizer);
+      await decide(piiStarted, { guard: 'pii', action: piiMatches.length ? 'redact' : 'allow',
+        reasonCode: piiMatches.length ? 'PII_DETECTED' : 'PII_CLEAR' });
 
       logger(piiMatches.length > 0 ? 'warn' : 'info', 'guard.model.pii.masked', 'PII scan completed for model request', {
         piiDetected: piiMatches.length > 0,
@@ -196,8 +249,22 @@ function createGuardHooks(config?: GuardConfig) {
     },
 
     tool: async (req: any, ctx: any, next: any) => {
-      const state = getGuardState(ctx);
+      const started = performance.now();
       const toolName = req?.toolRequest?.name;
+      const stop = async (action: 'block' | 'approval-required', reasonCode: GuardDecision['reasonCode']): Promise<never> => {
+        throw new GuardToolError(await decide(started, { guard: 'tool', action, reasonCode }));
+      };
+      const rules = config?.tools?.rules;
+      const action: GuardAction = rules && Object.hasOwn(rules, toolName)
+        ? rules[toolName] : config?.tools?.defaultAction ?? 'allow';
+      if (!['allow', 'block', 'redact', 'approval-required'].includes(action)) {
+        return stop('block', 'TOOL_POLICY_ERROR');
+      }
+      if (action === 'block') return stop('block', 'TOOL_BLOCKED');
+      if (action === 'approval-required' && !config?.tools?.approve) {
+        return stop('approval-required', 'TOOL_APPROVAL_REQUIRED');
+      }
+      const state = getGuardState(ctx);
 
       // Genkit may provide a fresh middleware context for a tool turn. Create a recovery
       // tokenizer that uses the configured vault so opaque tokens can be rehydrated safely.
@@ -209,6 +276,17 @@ function createGuardHooks(config?: GuardConfig) {
         req.toolRequest.input = await unmaskObject(req.toolRequest.input, state.tokenizers);
       }
 
+      if (action === 'approval-required') {
+        let approved: boolean;
+        try {
+          approved = await config!.tools!.approve!({
+            toolName, input: structuredClone(req?.toolRequest?.input), context: ctx?.context,
+          });
+        } catch {
+          return stop('block', 'TOOL_POLICY_ERROR');
+        }
+        if (approved !== true) return stop('block', 'TOOL_APPROVAL_DENIED');
+      }
       const toolInputText = collectStrings(req?.toolRequest?.input).join('\n');
       const piiResponse = await scanPII(toolInputText, config);
       const piiMatches = piiResponse?.matches || [];
@@ -228,6 +306,17 @@ function createGuardHooks(config?: GuardConfig) {
         piiTypes,
       });
 
+      if (action === 'redact' && req?.toolRequest) {
+        req.toolRequest.input = await transformStrings(req.toolRequest.input, (value) => {
+          // Irreversible redaction: do not send recoverable vault tokens to this tool.
+          for (const match of [...piiMatches].sort((a, b) => b.value.length - a.value.length)) {
+            if (match.value) value = value.split(match.value).join('[REDACTED]');
+          }
+          return value;
+        });
+      }
+      await decide(started, { guard: 'tool', action: action === 'redact' ? 'redact' : 'allow',
+        reasonCode: action === 'redact' ? 'TOOL_REDACTED' : action === 'approval-required' ? 'TOOL_APPROVED' : 'TOOL_ALLOWED' });
       const res = await next(req, ctx);
 
       const toolResponseText = collectStrings(res).join('\n');
@@ -350,9 +439,11 @@ async function scanPII(text: string, config?: GuardConfig) {
     };
   }
 
+  const models = resolveGuardModels(config);
   return detectPII(text, {
-    model: config?.pii?.model,
-    mode: config?.pii?.mode,
+    model: models.pii,
+    mode: models.mode,
+    labelMappings: config?.pii?.labelMappings,
   });
 }
 
