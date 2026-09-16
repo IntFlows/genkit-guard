@@ -12,7 +12,14 @@ import { defaultPiiVaultStorage, type PiiVaultStorage } from '../pii/storage.js'
 const GUARD_CONTEXT_KEY = '__genkitGuard';
 
 const toolActionSchema = z.enum(['allow', 'block', 'redact', 'approval-required']);
+const toolActionSchema = z.enum(['allow', 'block', 'redact', 'approval-required']);
 const guardConfigSchema = z.object({
+  policyVersion: z.string().optional(),
+  tools: z.object({
+    defaultAction: toolActionSchema.optional(),
+    rules: z.record(z.string(), toolActionSchema).optional(),
+    approve: z.any().optional(),
+  }).optional(),
   policyVersion: z.string().optional(),
   tools: z.object({
     defaultAction: toolActionSchema.optional(),
@@ -55,6 +62,8 @@ const guardConfigSchema = z.object({
 }).passthrough();
 
 export type GuardConfig = {
+  policyVersion?: string;
+  tools?: ToolGuardConfig;
   policyVersion?: string;
   tools?: ToolGuardConfig;
   intent?: {
@@ -116,8 +125,20 @@ export function guard(config: GuardConfig & { tools: ToolGuardConfig }): NativeG
 export function guard(config?: GuardConfig & { tools?: undefined }): LegacyGuard;
 export function guard(config: GuardConfig): NativeGuard | LegacyGuard;
 export function guard(config?: GuardConfig): NativeGuard | LegacyGuard {
+type GuardHooks = ReturnType<typeof createGuardHooks>;
+type NativeGuard = ReturnType<typeof guardMiddleware> & GuardHooks;
+type LegacyGuard = ((req: any, ctxOrNext: any, maybeNext?: any) => Promise<any>) & GuardHooks;
+
+export function guard(config: GuardConfig & { tools: ToolGuardConfig }): NativeGuard;
+export function guard(config?: GuardConfig & { tools?: undefined }): LegacyGuard;
+export function guard(config: GuardConfig): NativeGuard | LegacyGuard;
+export function guard(config?: GuardConfig): NativeGuard | LegacyGuard {
   const hooks = createGuardHooks(config);
   const baseMiddleware = guardMiddleware(config as any);
+
+  // Genkit treats every function as legacy model-only middleware, ignoring tool hooks.
+  // New tool policies must use a native reference; legacy configurations stay callable.
+  if (config?.tools) return Object.assign(baseMiddleware, hooks);
 
   // Genkit treats every function as legacy model-only middleware, ignoring tool hooks.
   // New tool policies must use a native reference; legacy configurations stay callable.
@@ -145,6 +166,7 @@ export function guard(config?: GuardConfig): NativeGuard | LegacyGuard {
   }
 
   return fnRunner as LegacyGuard;
+  return fnRunner as LegacyGuard;
 }
 
 export const guardAction = guard;
@@ -158,6 +180,7 @@ function createGuardHooks(config?: GuardConfig) {
   return {
     model: async (req: any, ctx: any, next: any) => {
       const started = performance.now();
+      const started = performance.now();
       const input = getInputText(req);
 
       logger('info', 'guard.model.start', 'Starting guard checks for model request');
@@ -169,11 +192,14 @@ function createGuardHooks(config?: GuardConfig) {
         });
 
         await decide(started, { guard: 'injection', action: 'block', reasonCode: 'INJECTION_PATTERN' });
+        await decide(started, { guard: 'injection', action: 'block', reasonCode: 'INJECTION_PATTERN' });
         return block('Prompt injection detected', {
           reason: 'pattern_match',
         });
       }
 
+      await decide(started, { guard: 'injection', action: 'allow', reasonCode: 'INJECTION_CLEAR' });
+      const intentStarted = performance.now();
       await decide(started, { guard: 'injection', action: 'allow', reasonCode: 'INJECTION_CLEAR' });
       const intentStarted = performance.now();
       logger('info', 'guard.intent.analysis.start', 'Analyzing request intent');
@@ -198,6 +224,11 @@ function createGuardHooks(config?: GuardConfig) {
         reasonCode: intentResult.allowed ? 'INTENT_ALLOWED' : 'INTENT_REJECTED',
         confidence: intentResult.score,
       });
+      await decide(intentStarted, {
+        guard: 'intent', action: intentResult.allowed ? 'allow' : 'block',
+        reasonCode: intentResult.allowed ? 'INTENT_ALLOWED' : 'INTENT_REJECTED',
+        confidence: intentResult.score,
+      });
       if (!intentResult.allowed) {
         logger('warn', 'guard.intent.blocked', 'Intent not allowed', {
           intent: intentResult.intent,
@@ -211,6 +242,7 @@ function createGuardHooks(config?: GuardConfig) {
       }
 
       const piiStarted = performance.now();
+      const piiStarted = performance.now();
       const textForPii = collectModelRequestText(req);
       const piiResponse = await scanPII(textForPii, config);
       const piiMatches = piiResponse?.matches || [];
@@ -220,6 +252,8 @@ function createGuardHooks(config?: GuardConfig) {
       await tokenizer.importTokens(textForPii);
       await maskModelRequest(req, tokenizer, piiMatches);
       pushTokenizer(ctx, tokenizer);
+      await decide(piiStarted, { guard: 'pii', action: piiMatches.length ? 'redact' : 'allow',
+        reasonCode: piiMatches.length ? 'PII_DETECTED' : 'PII_CLEAR' });
       await decide(piiStarted, { guard: 'pii', action: piiMatches.length ? 'redact' : 'allow',
         reasonCode: piiMatches.length ? 'PII_DETECTED' : 'PII_CLEAR' });
 
@@ -258,7 +292,28 @@ function createGuardHooks(config?: GuardConfig) {
 
     tool: async (req: any, ctx: any, next: any) => {
       const started = performance.now();
+      const started = performance.now();
       const toolName = req?.toolRequest?.name;
+      const stop = async (action: 'block' | 'approval-required', reasonCode: GuardDecision['reasonCode']): Promise<never> => {
+        throw new GuardToolError(await decide(started, { guard: 'tool', action, reasonCode }));
+      };
+      const rules = config?.tools?.rules;
+      const action: GuardAction = rules && Object.hasOwn(rules, toolName)
+        ? rules[toolName] : config?.tools?.defaultAction ?? 'allow';
+      if (!['allow', 'block', 'redact', 'approval-required'].includes(action)) {
+        return stop('block', 'TOOL_POLICY_ERROR');
+      }
+      if (action === 'block') return stop('block', 'TOOL_BLOCKED');
+      if (action === 'approval-required' && !config?.tools?.approve) {
+        return stop('approval-required', 'TOOL_APPROVAL_REQUIRED');
+      }
+      const state = getGuardState(ctx);
+
+      // Genkit may provide a fresh middleware context for a tool turn. Create a recovery
+      // tokenizer that uses the configured vault so opaque tokens can be rehydrated safely.
+      if (state.tokenizers.length === 0) {
+        state.tokenizers.push(createTokenizer(config, req, ctx));
+      }
       const stop = async (action: 'block' | 'approval-required', reasonCode: GuardDecision['reasonCode']): Promise<never> => {
         throw new GuardToolError(await decide(started, { guard: 'tool', action, reasonCode }));
       };
@@ -301,6 +356,17 @@ function createGuardHooks(config?: GuardConfig) {
         }
         if (approved !== true) return stop('block', 'TOOL_APPROVAL_DENIED');
       }
+      if (action === 'approval-required') {
+        let approved: boolean;
+        try {
+          approved = await config!.tools!.approve!({
+            toolName, input: structuredClone(req?.toolRequest?.input), context: ctx?.context,
+          });
+        } catch {
+          return stop('block', 'TOOL_POLICY_ERROR');
+        }
+        if (approved !== true) return stop('block', 'TOOL_APPROVAL_DENIED');
+      }
       const toolInputText = collectStrings(req?.toolRequest?.input).join('\n');
       const piiResponse = await scanPII(toolInputText, config);
       const piiMatches = piiResponse?.matches || [];
@@ -323,6 +389,17 @@ function createGuardHooks(config?: GuardConfig) {
         piiTypes,
       });
 
+      if (action === 'redact' && req?.toolRequest) {
+        req.toolRequest.input = await transformStrings(req.toolRequest.input, (value) => {
+          // Irreversible redaction: do not send recoverable vault tokens to this tool.
+          for (const match of [...piiMatches].sort((a, b) => b.value.length - a.value.length)) {
+            if (match.value) value = value.split(match.value).join('[REDACTED]');
+          }
+          return value;
+        });
+      }
+      await decide(started, { guard: 'tool', action: action === 'redact' ? 'redact' : 'allow',
+        reasonCode: action === 'redact' ? 'TOOL_REDACTED' : action === 'approval-required' ? 'TOOL_APPROVED' : 'TOOL_ALLOWED' });
       if (action === 'redact' && req?.toolRequest) {
         req.toolRequest.input = await transformStrings(req.toolRequest.input, (value) => {
           // Irreversible redaction: do not send recoverable vault tokens to this tool.
@@ -459,6 +536,7 @@ async function scanPII(text: string, config?: GuardConfig) {
     };
   }
 
+  const models = resolveGuardModels(config);
   const models = resolveGuardModels(config);
   return detectPII(text, {
     model: models.pii,

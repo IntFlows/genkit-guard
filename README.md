@@ -167,8 +167,30 @@ Restoration also works inside structured responses. Tool policy checks determine
 ## Tool controls
 
 Add exact tool names to the shared configuration:
+```text
+Input:          Email alice@example.com
+Model receives: Email [[EMAIL_<namespace>_0]]
+Restored:       Email alice@example.com
+```
+
+Restoration also works inside structured responses. Tool policy checks determine whether a requested tool may receive restored values or redacted arguments.
+
+## Tool controls
+
+Add exact tool names to the shared configuration:
 
 ```ts
+tools: {
+  defaultAction: "block",
+  rules: {
+    searchDocs: "allow",
+    summarizeTicket: "redact",
+    deleteTicket: "approval-required"
+  },
+  approve: async ({ toolName, input, context }) => {
+    // Connect a trusted approval service for this exact call and user.
+    // This example denies every approval request.
+    return false;
 tools: {
   defaultAction: "block",
   rules: {
@@ -217,11 +239,57 @@ Use `models.extractor` and `pii.model` to select compatible models, and `pii.lab
 ## PII Vault Isolation and External Storage
 
 Masked values are kept in a vault so they can be restored later. By default, the middleware uses process-local in-memory storage with generated vault scopes. Each tokenizer also generates an opaque namespace for its placeholders:
+| Policy | Behavior |
+| --- | --- |
+| `allow` | Restore tokens, scan input, then execute |
+| `block` | Stop before execution |
+| `redact` | Replace detected PII in nested string arguments with `[REDACTED]`, then execute |
+| `approval-required` | Execute only when the application's callback returns literal `true` |
 
+Blocked, pending, or denied calls throw `GuardToolError`. Approval UI and durable approval storage belong to the application. Redaction may invalidate a tool's input schema, such as an email field; choose a policy appropriate to the tool.
+
+Without tool policies, the default remains allow. With `tools` configured, `guard()` returns a native Genkit middleware reference. Existing configurations without `tools` retain the legacy callable form. Use `guardMiddleware(config)` for native tool hooks without explicit policies.
+
+See [tool controls and logging](https://github.com/IntFlows/genkit-guard/wiki/9.-Tool-Controls-and-Logging) for the complete behavior.
+
+## Models and PII storage
+
+| Setting | Default |
+| --- | --- |
+| Intent model | `Xenova/all-MiniLM-L6-v2` |
+| PII mode | `ner` |
+| NER model | `Xenova/bert-base-NER` |
+| Classifier model | `openai/privacy-filter` when classifier mode is selected |
+| PII vault | In-memory storage |
+
+The quick start explicitly selects classifier mode. Regex detection also runs for email, Australian phone and identifier patterns, and credit-card-like numbers.
+
+Use `models.extractor` and `pii.model` to select compatible models, and `pii.labelMappings` to map fine-tuned labels to masking types. Classifier mode currently loads `q4` weights. Redis and custom vault adapters support external storage.
+
+- [Shared model configuration](https://github.com/IntFlows/genkit-guard/wiki/8.-Shared-Model-Configuration)
+- [PII labels, masking and vaults](https://github.com/IntFlows/genkit-guard/wiki/5.-PII-Guard)
+
+## PII Vault Isolation and External Storage
+
+Masked values are kept in a vault so they can be restored later. By default, the middleware uses process-local in-memory storage with generated vault scopes. Each tokenizer also generates an opaque namespace for its placeholders:
+
+```text
+alice@example.com -> [[EMAIL_<namespace>_0]]
 ```text
 alice@example.com -> [[EMAIL_<namespace>_0]]
 ```
 
+Namespaces prevent concurrent calls from creating identical placeholder names. Use `pii.vault.scopeId` to group vault entries by request, session, or another application scope. The scope ID is not exposed in the placeholder.
+
+### Redis storage
+
+Use Redis when vault entries need to survive application restarts or be available to multiple workers. Install the client separately:
+
+```bash
+npm install redis
+```
+
+Extend your shared configuration during application startup:
 Namespaces prevent concurrent calls from creating identical placeholder names. Use `pii.vault.scopeId` to group vault entries by request, session, or another application scope. The scope ID is not exposed in the placeholder.
 
 ### Redis storage
@@ -238,14 +306,21 @@ Extend your shared configuration during application startup:
 import { createClient } from "redis";
 import { guard, initGuard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
 import guardConfig from "./guard.config.js";
+import { guard, initGuard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
+import guardConfig from "./guard.config.js";
 
+const redis = createClient({ url: process.env.REDIS_URL ?? "redis://localhost:6379" });
+redis.on("error", () => console.error("PII vault Redis connection error"));
 const redis = createClient({ url: process.env.REDIS_URL ?? "redis://localhost:6379" });
 redis.on("error", () => console.error("PII vault Redis connection error"));
 await redis.connect();
 
 const config = {
   ...guardConfig,
+const config = {
+  ...guardConfig,
   pii: {
+    ...guardConfig.pii,
     ...guardConfig.pii,
     vault: {
       storage: createRedisPiiVaultStorage(redis, {
@@ -354,7 +429,10 @@ npx tsx src/tool-controls.ts
 ## Contributing
 
 Issues, pull requests, model evaluations and security reviews are welcome. Run `npm test` for the deterministic suite; real Redis integration is tested separately with `npm run test:redis`.
+Issues, pull requests, model evaluations and security reviews are welcome. Run `npm test` for the deterministic suite; real Redis integration is tested separately with `npm run test:redis`.
 
 ## License
+## License
 
+[Apache-2.0](./LICENSE)
 [Apache-2.0](./LICENSE)

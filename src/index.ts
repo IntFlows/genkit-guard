@@ -50,6 +50,7 @@ function logGuardEvent(eventName: string, body: string, attributes: Record<strin
  * Pre-load the model to avoid cold-start delay on first user request.
  */
 export async function initGuard(config?: GuardConfig) {
+export async function initGuard(config?: GuardConfig) {
   logGuardEvent('guard.models.loading', 'Loading local guard models');
 
   const { extractor, pii, mode: piiMode } = resolveGuardModels(config);

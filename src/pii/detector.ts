@@ -102,6 +102,7 @@ export async function detectPII(text: string, opts?: GuardConfig['pii'], config?
 }
 
 export function privacyFilterOutputToMatches(text: string, output: unknown, labelMappings?: PiiLabelMappings): PiiMatch[] {
+export function privacyFilterOutputToMatches(text: string, output: unknown, labelMappings?: PiiLabelMappings): PiiMatch[] {
   if (!Array.isArray(output)) return [];
 
   const matches: PiiMatch[] = [];
@@ -113,6 +114,8 @@ export function privacyFilterOutputToMatches(text: string, output: unknown, labe
     if (typeof rawLabel !== 'string') continue;
 
     const label = rawLabel.replace(/^[BIES]-/, '').toLowerCase();
+    const customType = mappedLabel(rawLabel, labelMappings);
+    const type = customType !== undefined ? customType : (Object.hasOwn(PRIVACY_FILTER_TYPE_MAP, label) ? PRIVACY_FILTER_TYPE_MAP[label] : undefined);
     const customType = mappedLabel(rawLabel, labelMappings);
     const type = customType !== undefined ? customType : (Object.hasOwn(PRIVACY_FILTER_TYPE_MAP, label) ? PRIVACY_FILTER_TYPE_MAP[label] : undefined);
     if (!type) continue;
@@ -137,6 +140,18 @@ export function privacyFilterOutputToMatches(text: string, output: unknown, labe
   }
 
   return matches;
+}
+
+function mappedLabel(label: unknown, mappings?: PiiLabelMappings): string | null | undefined {
+  if (typeof label !== 'string' || !mappings) return undefined;
+  const normalize = (value: string) => value.replace(/^[BIES]-/i, '').toLowerCase();
+  const entry = Object.entries(mappings).find(([key]) => normalize(key) === normalize(label));
+  if (!entry) return undefined;
+  const type = entry[1];
+  if (type !== null && !/^[A-Z_]+$/.test(type)) {
+    throw new Error('PII label mapping types must contain only uppercase letters and underscores');
+  }
+  return type;
 }
 
 function mappedLabel(label: unknown, mappings?: PiiLabelMappings): string | null | undefined {
