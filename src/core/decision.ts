@@ -3,7 +3,8 @@ export type GuardReasonCode =
   | 'INJECTION_PATTERN' | 'INJECTION_CLEAR' | 'INTENT_ALLOWED' | 'INTENT_REJECTED'
   | 'PII_DETECTED' | 'PII_CLEAR' | 'TOOL_ALLOWED' | 'TOOL_BLOCKED'
   | 'TOOL_REDACTED' | 'TOOL_APPROVAL_REQUIRED' | 'TOOL_APPROVED'
-  | 'TOOL_APPROVAL_DENIED' | 'TOOL_POLICY_ERROR';
+  | 'TOOL_APPROVAL_DENIED' | 'TOOL_POLICY_ERROR'
+  | 'MODEL_FALLBACK_USED' | 'MODEL_UNAVAILABLE';
 
 /** Content-free audit contract. Version independently of the npm package. */
 export interface GuardDecision {

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
-let source = join(root, 'docs/wiki-v0.0.14');
+let source = join(root, 'docs/wiki-v0.1.0');
 let repository = 'https://github.com/IntFlows/genkit-guard.wiki.git';
 let publish = false;
 for (let i = 0; i < args.length; i++) {

@@ -1,6 +1,6 @@
-# Wiki pages for v0.0.14
+# Wiki pages for v0.1.0
 
-Revised from the seven existing GitHub wiki pages, with new configuration and Release 1 pages. Copy these nine numbered Markdown files into the wiki repository when ready to publish.
+Revised from the seven existing GitHub wiki pages, with new configuration and Release 1 pages. Copy these ten numbered Markdown files into the wiki repository when ready to publish.
 
 - [1.-Home](1.-Home.md)
 - [2.-Architecture](2.-Architecture.md)
@@ -14,3 +14,5 @@ Revised from the seven existing GitHub wiki pages, with new configuration and Re
 - [9.-Tool-Controls-and-Logging](9.-Tool-Controls-and-Logging.md)
 
 From the repository root, run `npm run wiki:publish` to preview the remote diff. Run `npm run wiki:publish -- --publish` to commit and push. GitHub Git authentication and wiki write access must already be configured. The script uses a temporary checkout, leaves unrelated pages intact, and never force-pushes. `--source DIRECTORY` selects another documentation folder; `--repo URL` selects another wiki remote.
+
+- [10.-Decision-Storage-and-Model-Fallback](10.-Decision-Storage-and-Model-Fallback.md)
