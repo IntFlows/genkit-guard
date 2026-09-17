@@ -1,4 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { publishDecision } from '../core/audit.js';
+import type { GuardDecisionStore } from '../core/decision-storage.js';
+import { runGuardModel } from '../util/fallback.js';
 import { GuardToolError, type GuardDecision, type GuardAction, type ToolGuardConfig } from '../core/decision.js';
 import { resolveGuardModels, type PiiLabelMappings } from '../guard.config.js';
 import { generateMiddleware, z } from 'genkit';
@@ -29,6 +31,10 @@ const guardConfigSchema = z.object({
     reversible: z.boolean().optional(),
     model: z.string().optional(),
     mode: z.enum(['ner', 'classifier']).optional(),
+    fallback: z.object({
+      model: z.string(), mode: z.enum(['ner', 'classifier']).optional(),
+      labelMappings: z.record(z.string(), z.string().regex(/^[A-Z_]+$/).nullable()).optional(),
+    }).optional(),
     labelMappings: z.record(z.string(), z.string().regex(/^[A-Z_]+$/).nullable()).optional(),
     vault: z.object({
       storage: z.any().optional(),
@@ -40,9 +46,11 @@ const guardConfigSchema = z.object({
     level: z.enum(['debug', 'info', 'warn', 'error']).optional(),
     serviceName: z.string().optional(),
     onDecision: z.any().optional(),
+    store: z.any().optional(),
   }).optional(),
   models: z.object({
     extractor: z.string().optional(),
+    extractorFallback: z.string().optional(),
   }).optional(),
 }).passthrough();
 
@@ -61,6 +69,7 @@ export type GuardConfig = {
     reversible?: boolean;
     model?: string;
     mode?: 'ner' | 'classifier';
+    fallback?: { model: string; mode?: 'ner' | 'classifier'; labelMappings?: PiiLabelMappings };
     labelMappings?: PiiLabelMappings;
     vault?: {
       storage?: PiiVaultStorage;
@@ -73,9 +82,12 @@ export type GuardConfig = {
     serviceName?: string;
     /** Awaited audit callback, independent of console logging level/enabled. Failure stops execution. */
     onDecision?: (decision: GuardDecision) => void | Promise<void>;
+    /** Durable audit delivery. Failure stops execution; called before onDecision. */
+    store?: GuardDecisionStore;
   };
   models?: {
     extractor?: string;
+    extractorFallback?: string;
   };
   [key: string]: any;
 };
@@ -140,17 +152,8 @@ export const guardAction = guard;
 function createGuardHooks(config?: GuardConfig) {
   const logger = createLogger(config);
   const models = resolveGuardModels(config);
-  const decide = async (start: number, fields: Pick<GuardDecision, 'guard' | 'action' | 'reasonCode'> & { confidence?: number }) => {
-    const decision: GuardDecision = Object.freeze({
-      schemaVersion: '1', decisionId: randomUUID(), timestamp: new Date().toISOString(),
-      policyVersion: config?.policyVersion ?? 'unversioned',
-      latencyMs: Math.max(0, performance.now() - start), ...fields,
-    });
-    logger(decision.action === 'block' || decision.action === 'approval-required' ? 'warn' : 'info',
-      'guard.decision', 'Guard policy decision', { decision });
-    await config?.logging?.onDecision?.(decision);
-    return decision;
-  };
+  const decide = (start: number, fields: Pick<GuardDecision, 'guard' | 'action' | 'reasonCode'> & { confidence?: number }) =>
+    publishDecision(config, start, fields);
 
   return {
     model: async (req: any, ctx: any, next: any) => {
@@ -175,12 +178,14 @@ function createGuardHooks(config?: GuardConfig) {
       const intentStarted = performance.now();
       logger('info', 'guard.intent.analysis.start', 'Analyzing request intent');
 
-      const intentResult = await analyzeIntentStructured(
+      const analyze = (model: string) => analyzeIntentStructured(
         input,
         config?.intent?.semantic?.intents ?? {},
         config?.intent?.semantic?.threshold ?? 0.7,
-        models.extractor
+        model
       );
+      const intentResult = await runGuardModel(config, 'intent', () => analyze(models.extractor),
+        config?.models?.extractorFallback ? () => analyze(config.models!.extractorFallback!) : undefined);
 
       logger('info', 'guard.intent.analysis.complete', 'Intent analysis completed', {
         intent: intentResult.intent,
@@ -222,7 +227,7 @@ function createGuardHooks(config?: GuardConfig) {
         piiDetected: piiMatches.length > 0,
         piiMatchCount: piiMatches.length,
         piiTypes,
-        piiMode: config?.pii?.mode ?? 'ner',
+        piiMode: piiResponse.effectiveMode ?? models.mode,
         classifierOutputPresent: Boolean(piiResponse.classifier),
       });
 
@@ -236,6 +241,9 @@ function createGuardHooks(config?: GuardConfig) {
         piiModel: config?.pii?.model,
         piiMode: config?.pii?.mode,
         piiClassifierOutput: piiResponse.classifier,
+        piiEffectiveModel: piiResponse.effectiveModel,
+        piiEffectiveMode: piiResponse.effectiveMode,
+        piiUsedFallback: piiResponse.usedFallback,
       };
 
       const res = await next(req, ctx);
@@ -272,12 +280,6 @@ function createGuardHooks(config?: GuardConfig) {
         state.tokenizers.push(createTokenizer(config, req, ctx));
       }
 
-      // Genkit may provide a fresh middleware context for a tool turn. Create a recovery
-      // tokenizer that uses the configured vault so opaque tokens can be rehydrated safely.
-      if (state.tokenizers.length === 0) {
-        state.tokenizers.push(createTokenizer(config, req, ctx));
-      }
-
       if (req?.toolRequest && 'input' in req.toolRequest) {
         req.toolRequest.input = await unmaskObject(req.toolRequest.input, state.tokenizers);
       }
@@ -303,6 +305,9 @@ function createGuardHooks(config?: GuardConfig) {
         piiDetected: piiMatches.length > 0,
         piiTypes,
         piiMatchCount: piiMatches.length,
+        piiEffectiveModel: piiResponse.effectiveModel,
+        piiEffectiveMode: piiResponse.effectiveMode,
+        piiUsedFallback: piiResponse.usedFallback,
       };
 
       logger(piiMatches.length > 0 ? 'warn' : 'info', 'guard.tool.pii.checked', 'Tool request PII scan completed', {
@@ -442,6 +447,9 @@ async function scanPII(text: string, config?: GuardConfig) {
     return {
       matches: [],
       classifier: undefined,
+      effectiveModel: undefined,
+      effectiveMode: undefined,
+      usedFallback: false,
     };
   }
 
@@ -450,7 +458,8 @@ async function scanPII(text: string, config?: GuardConfig) {
     model: models.pii,
     mode: models.mode,
     labelMappings: config?.pii?.labelMappings,
-  });
+    fallback: config?.pii?.fallback,
+  }, config);
 }
 
 function getGuardState(ctx: any = {}): GuardState {

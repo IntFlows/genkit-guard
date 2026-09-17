@@ -49,3 +49,14 @@ guard(release1);
 // Legacy direct invocation remains typed for configurations without tool policies.
 void guard()({ prompt: 'test' }, async (request: unknown) => request);
 void guard({ pii: { mode: 'ner' } })({ prompt: 'test' }, async (request: unknown) => request);
+
+import { createJsonlDecisionStore, createGuardDecisionStore, GuardModelError } from '../src/index.js';
+const nextVersion = defineGuardConfig({
+  models: { extractorFallback: 'backup/intent' },
+  pii: { mode: 'classifier', fallback: { model: 'backup/pii', mode: 'ner', labelMappings: { PER: 'NAME' } } },
+  logging: { store: createJsonlDecisionStore('./logs/decisions.jsonl') },
+});
+guard(nextVersion);
+void initGuard(nextVersion);
+createGuardDecisionStore({ append: async decision => { const version: '1' = decision.schemaVersion; } });
+const unavailable: string = new GuardModelError('pii').code;

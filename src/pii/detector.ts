@@ -1,3 +1,5 @@
+import type { GuardConfig } from '../middleware/middleware.js';
+import { runGuardModel } from '../util/fallback.js';
 import type { PiiLabelMappings } from '../guard.config.js';
 import { ModelSingleton } from '../util/singleton.js';
 
@@ -46,7 +48,7 @@ const REGEX_RULES = [
   { type: 'CREDIT_CARD', pattern: /\b(?:\d[ -]*?){13,16}\b/g }
 ];
 
-export async function detectPII(text: string, opts?: { model?: string; mode?: 'ner' | 'classifier'; labelMappings?: PiiLabelMappings }) {
+export async function detectPII(text: string, opts?: GuardConfig['pii'], config?: GuardConfig) {
   const mode = opts?.mode ?? 'ner';
   const model = opts?.model;
 
@@ -58,35 +60,44 @@ export async function detectPII(text: string, opts?: { model?: string; mode?: 'n
     matches.forEach(m => results.push({ type: rule.type, value: m }));
   }
 
-  // ---- NER ----
+  // Only model loading/inference is retried. Label mapping errors are not model failures.
+  const infer = async (selected: { model?: string; mode?: 'ner' | 'classifier'; labelMappings?: PiiLabelMappings }, usedFallback = false) => {
+    const selectedMode = selected.mode ?? mode;
+    const pipeline = selectedMode === 'ner'
+      ? await ModelSingleton.getNER(selected.model)
+      : await ModelSingleton.getPIIClassifier(selected.model);
+    const output = selectedMode === 'ner' ? await pipeline(text)
+      : await pipeline(text, { aggregation_strategy: 'simple' });
+    if (!Array.isArray(output)) throw new Error('Invalid PII model output');
+    return { output, mode: selectedMode, labelMappings: selected.labelMappings, usedFallback,
+      model: selected.model ?? (selectedMode === 'ner' ? 'Xenova/bert-base-NER' : 'openai/privacy-filter') };
+  };
+  const selected = await runGuardModel(config, 'pii',
+    () => infer({ model, mode, labelMappings: opts?.labelMappings }),
+    opts?.fallback ? () => infer(opts.fallback!, true) : undefined);
   let classifierOutput: any = undefined;
-  if (mode === 'ner') {
-    const ner = await ModelSingleton.getNER(model);
-    const entities = await ner(text);
-
-    for (const e of entities) {
-      const mappedType = mappedLabel(e.entity_group ?? e.entity, opts?.labelMappings);
+  if (selected.mode === 'ner') {
+    for (const e of selected.output) {
+      const mappedType = mappedLabel(e.entity_group ?? e.entity, selected.labelMappings);
       if (mappedType !== undefined) {
-        if (mappedType) results.push(...privacyFilterOutputToMatches(text, [e], opts?.labelMappings));
+        if (mappedType) results.push(...privacyFilterOutputToMatches(text, [e], selected.labelMappings));
       } else if (e.entity && e.entity.includes('PER')) {
         results.push({ type: 'NAME', value: (e.word || '').replace(/##/g, '') });
       }
     }
   } else {
-    // Privacy Filter is a token-classification model. Aggregation produces complete spans
-    // rather than individual BIOES-labelled tokens.
-    const cls = await ModelSingleton.getPIIClassifier(model);
-    classifierOutput = await cls(text, { aggregation_strategy: 'simple' });
-    for (const match of privacyFilterOutputToMatches(text, classifierOutput, opts?.labelMappings)) {
-      if (!results.some((existing) => existing.value === match.value)) {
-        results.push(match);
-      }
+    classifierOutput = selected.output;
+    for (const match of privacyFilterOutputToMatches(text, classifierOutput, selected.labelMappings)) {
+      if (!results.some((existing) => existing.value === match.value)) results.push(match);
     }
   }
 
   return {
     matches: results,
-    classifier: classifierOutput
+    classifier: classifierOutput,
+    effectiveModel: selected.model,
+    effectiveMode: selected.mode,
+    usedFallback: selected.usedFallback,
   };
 }
 

@@ -1,3 +1,7 @@
+export { createGuardDecisionStore, createJsonlDecisionStore, guardDecisionSchema } from './core/decision-storage.js';
+export type { GuardDecisionStore, JsonlDecisionStore } from './core/decision-storage.js';
+export { GuardModelError } from './util/fallback.js';
+import { runGuardModel } from './util/fallback.js';
 export * from './core/decision.js';
 import { resolveGuardModels } from './guard.config.js';
 import type { GuardConfig } from './middleware/middleware.js';
@@ -49,10 +53,12 @@ export async function initGuard(config?: GuardConfig) {
   logGuardEvent('guard.models.loading', 'Loading local guard models');
 
   const { extractor, pii, mode: piiMode } = resolveGuardModels(config);
-  const tasks = [ModelSingleton.getExtractor(extractor)];
-  tasks.push(piiMode === 'ner'
-    ? ModelSingleton.getNER(pii)
-    : ModelSingleton.getPIIClassifier(pii));
+  const loadPii = (model: string, mode: 'ner' | 'classifier') => mode === 'ner'
+    ? ModelSingleton.getNER(model) : ModelSingleton.getPIIClassifier(model);
+  const tasks = [runGuardModel(config, 'intent', () => ModelSingleton.getExtractor(extractor),
+    config?.models?.extractorFallback ? () => ModelSingleton.getExtractor(config.models!.extractorFallback!) : undefined)];
+  tasks.push(runGuardModel(config, 'pii', () => loadPii(pii, piiMode),
+    config?.pii?.fallback ? () => loadPii(config.pii!.fallback!.model, config.pii!.fallback!.mode ?? piiMode) : undefined));
 
   await Promise.all(tasks);
   logGuardEvent('guard.models.loaded', 'Local guard models loaded', {
