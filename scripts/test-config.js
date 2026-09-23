@@ -13,6 +13,20 @@ for (const method of ['getExtractor', 'getNER', 'getPIIClassifier']) {
 }
 try {
   await initGuard();
+  assert.deepEqual(calls.splice(0), [['getExtractor', 'Xenova/all-MiniLM-L6-v2'], ['getPIIClassifier', 'openai/privacy-filter']]);
+  const defaultDetection = await detectPII('alice@example.com');
+  assert.equal(defaultDetection.effectiveMode, 'classifier');
+  assert.equal(defaultDetection.effectiveModel, 'openai/privacy-filter');
+  assert.deepEqual(calls.splice(0), [['getPIIClassifier', 'openai/privacy-filter']]);
+  await guard({ intent: { semantic: { intents: { support: 'Support' } } }, logging: { enabled: false } })
+    .model({ prompt: 'Help alice@example.com' }, {}, async req => {
+      assert.equal(req.metadata.piiEffectiveMode, 'classifier');
+      assert.equal(req.metadata.piiEffectiveModel, 'openai/privacy-filter');
+      assert.doesNotMatch(req.prompt, /alice@example.com/);
+      return {};
+    });
+  assert.deepEqual(calls.splice(0), [['getExtractor', 'Xenova/all-MiniLM-L6-v2'], ['getPIIClassifier', 'openai/privacy-filter']]);
+  await initGuard({ pii: { mode: 'ner' } });
   assert.deepEqual(calls.splice(0), [['getExtractor', 'Xenova/all-MiniLM-L6-v2'], ['getNER', 'Xenova/bert-base-NER']]);
   for (const mode of ['ner', 'classifier']) {
     const config = defineGuardConfig({

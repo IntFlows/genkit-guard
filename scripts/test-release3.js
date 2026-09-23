@@ -8,6 +8,7 @@ import { InMemoryPiiVaultStorage } from '../dist/pii/storage.js';
 
 ModelSingleton.getExtractor = async () => async () => ({ tolist: () => [[1, 0], [1, 0]] });
 ModelSingleton.getNER = async () => async () => [];
+ModelSingleton.getPIIClassifier = async () => async () => [];
 const config = { intent: { semantic: { intents: { support: 'Support' } } }, logging: { enabled: false } };
 
 test('injection checks cover later content parts, history, and documents', async () => {

@@ -1,6 +1,6 @@
 import type { GuardConfig } from '../middleware/middleware.js';
 import { runGuardModel } from '../util/fallback.js';
-import type { PiiLabelMappings } from '../guard.config.js';
+import { resolveGuardModels, type PiiLabelMappings } from '../guard.config.js';
 import { ModelSingleton } from '../util/singleton.js';
 
 export type PiiMatch = { type: string; value: string };
@@ -49,8 +49,7 @@ const REGEX_RULES = [
 ];
 
 export async function detectPII(text: string, opts?: GuardConfig['pii'], config?: GuardConfig) {
-  const mode = opts?.mode ?? 'ner';
-  const model = opts?.model;
+  const { mode, pii: model } = resolveGuardModels({ pii: opts });
 
   const results: PiiMatch[] = [];
 

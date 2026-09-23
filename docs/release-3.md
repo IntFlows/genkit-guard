@@ -18,6 +18,10 @@ After compatible updates, `npm audit --omit=dev` reports zero findings in this r
 
 On Windows with Node.js 26, the full deterministic suite passes against the latest stable Genkit resolved from npm. Type checking, build and all 26 release regression tests also pass against the minimum peer target. The example type-check and all six README TypeScript examples pass syntax/type checks as applicable. The Node.js 22/24 CI matrix is configured but has not been run remotely as part of this local preparation. Live inference, provider calls and a real Redis server were not exercised.
 
+## PII default migration
+
+PII now defaults to `classifier` with `openai/privacy-filter` during startup, model/tool requests and direct detection. Explicit `pii: { mode: "ner" }` retains BERT NER. A custom PII model without a mode now uses classifier mode, which requires compatible q4 weights; set the mode explicitly for existing NER models. This aligns defaults with the bundled model download script.
+
 ## Error contract and migration
 
 | Failure | Public result |

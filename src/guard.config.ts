@@ -9,7 +9,7 @@ export function defineGuardConfig(config: GuardConfig): GuardConfig {
 }
 
 export function resolveGuardModels(config?: GuardConfig) {
-  const mode = config?.pii?.mode ?? 'ner';
+  const mode = config?.pii?.mode ?? 'classifier';
   return {
     extractor: config?.models?.extractor ?? 'Xenova/all-MiniLM-L6-v2',
     mode,

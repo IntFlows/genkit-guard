@@ -5,6 +5,7 @@ import { guard, guardMiddleware, GuardToolError } from '../dist/index.js';
 import { ModelSingleton } from '../dist/util/singleton.js';
 ModelSingleton.getExtractor = async () => async () => ({ tolist: () => [[1, 0], [1, 0]] });
 ModelSingleton.getNER = async () => async () => [];
+ModelSingleton.getPIIClassifier = async () => async () => [];
 const base = { intent: { semantic: { intents: { support: 'Support' } } }, logging: { enabled: false } };
 const request = () => ({ toolRequest: { name: 'sendEmail', input: { email: 'alice@example.com', nested: ['alice@example.com'] } } });
 

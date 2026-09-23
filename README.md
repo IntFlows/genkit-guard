@@ -207,12 +207,12 @@ See [tool controls and logging](https://github.com/IntFlows/genkit-guard/wiki/9.
 | Setting | Default |
 | --- | --- |
 | Intent model | `Xenova/all-MiniLM-L6-v2` |
-| PII mode | `ner` |
-| NER model | `Xenova/bert-base-NER` |
-| Classifier model | `openai/privacy-filter` when classifier mode is selected |
+| PII mode | `classifier` |
+| NER model (explicit opt-in) | `Xenova/bert-base-NER` |
+| Classifier model | `openai/privacy-filter` |
 | PII vault | In-memory storage |
 
-The quick start explicitly selects classifier mode. Regex detection also runs for email, Australian phone and identifier patterns, and credit-card-like numbers.
+Classifier mode is the default; the quick start also selects it explicitly. To retain NER behavior, set `pii: { mode: "ner" }`. Regex detection also runs for email, Australian phone and identifier patterns, and credit-card-like numbers.
 
 Use `models.extractor` and `pii.model` to select compatible models, and `pii.labelMappings` to map fine-tuned labels to masking types. Classifier mode currently loads `q4` weights. Redis and custom vault adapters support external storage.
 
