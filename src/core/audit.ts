@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { guardOperation } from './errors.js';
 import type { GuardConfig } from '../middleware/middleware.js';
 import type { GuardDecision } from './decision.js';
 
@@ -21,7 +22,9 @@ export async function publishDecision(config: GuardConfig | undefined, start: nu
     (warning ? console.warn : console.log)(JSON.stringify(record));
   }
   // Persist before invoking the callback. Neither failure may trigger a model fallback.
-  await config?.logging?.store?.append(decision);
-  await config?.logging?.onDecision?.(decision);
+  await guardOperation('AUDIT_UNAVAILABLE', async () => {
+    await config?.logging?.store?.append(decision);
+    await config?.logging?.onDecision?.(decision);
+  });
   return decision;
 }

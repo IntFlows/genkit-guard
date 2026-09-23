@@ -5,7 +5,7 @@ export class GuardModelError extends Error {
   readonly code = 'MODEL_UNAVAILABLE';
   constructor(public readonly guard: 'intent' | 'pii') {
     // Do not attach underlying errors: inference errors can contain request content.
-    super(`Primary and fallback ${guard} models failed`);
+    super(`Guard ${guard} model unavailable`);
     this.name = 'GuardModelError';
   }
 }
@@ -16,8 +16,11 @@ export async function runGuardModel<T>(config: GuardConfig | undefined, guard: '
   const start = performance.now();
   try {
     return await primary();
-  } catch (error) {
-    if (!fallback) throw error; // Preserve existing failure behavior without opt-in.
+  } catch {
+    if (!fallback) {
+      await publishDecision(config, start, { guard, action: 'block', reasonCode: 'MODEL_UNAVAILABLE' });
+      throw new GuardModelError(guard);
+    }
   }
   let result: T;
   try {

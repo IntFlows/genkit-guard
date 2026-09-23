@@ -1,4 +1,6 @@
 import { defaultPiiVaultStorage, type PiiVaultStorage } from './storage.js';
+import { randomUUID } from 'node:crypto';
+import { guardOperation } from '../core/errors.js';
 
 export type PiiResult = {
   maskedText: string;
@@ -22,7 +24,13 @@ export class PiiTokenizer {
   constructor(options: PiiTokenizerOptions = {}) {
     this.scopeId = options.scopeId ?? createVaultScopeId();
     this.tokenNamespace = createVaultScopeId();
-    this.storage = options.storage ?? defaultPiiVaultStorage;
+    const storage = options.storage ?? defaultPiiVaultStorage;
+    this.storage = {
+      get: (scope, token) => guardOperation('VAULT_UNAVAILABLE', () => storage.get(scope, token)),
+      set: (scope, token, value) => guardOperation('VAULT_UNAVAILABLE', () => storage.set(scope, token, value)),
+      entries: scope => guardOperation('VAULT_UNAVAILABLE', () => storage.entries(scope)),
+      ...(storage.getByToken ? { getByToken: (token: string) => guardOperation('VAULT_UNAVAILABLE', () => storage.getByToken!(token)) } : {}),
+    };
   }
 
   private createToken(type: string) {
@@ -32,7 +40,8 @@ export class PiiTokenizer {
   async mask(text: string, matches: { type: string; value: string }[]): Promise<PiiResult> {
     let masked = text;
 
-    for (const match of matches) {
+    for (const match of [...matches].sort((a, b) => b.value.length - a.value.length)) {
+      if (!match.value) continue;
       if (!masked.includes(match.value)) {
         continue;
       }
@@ -42,8 +51,8 @@ export class PiiTokenizer {
 
       if (!token) {
         token = this.createToken(match.type);
-        this.valueToToken.set(key, token);
         await this.storage.set(this.scopeId, token, match.value);
+        this.valueToToken.set(key, token);
       }
 
       this.piiTypes.add(match.type.toLowerCase());
@@ -91,9 +100,5 @@ export class PiiTokenizer {
 }
 
 function createVaultScopeId() {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID().replace(/-/g, '');
-  }
-
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+  return randomUUID().replace(/-/g, '');
 }

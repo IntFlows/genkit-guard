@@ -9,7 +9,7 @@ import { detectPII } from '../pii/detector.js';
 import { PiiTokenizer } from '../pii/tokenizer.js';
 import { defaultPiiVaultStorage, type PiiVaultStorage } from '../pii/storage.js';
 
-const GUARD_CONTEXT_KEY = '__genkitGuard';
+const guardStates = new WeakMap<object, GuardState>();
 
 const toolActionSchema = z.enum(['allow', 'block', 'redact', 'approval-required']);
 const guardConfigSchema = z.object({
@@ -25,7 +25,7 @@ const guardConfigSchema = z.object({
     semantic: z.object({
       threshold: z.number().optional(),
       intents: z.record(z.string(), z.string()),
-    }),
+    }).optional(),
   }).optional(),
   pii: z.object({
     reversible: z.boolean().optional(),
@@ -162,7 +162,7 @@ function createGuardHooks(config?: GuardConfig) {
 
       logger('info', 'guard.model.start', 'Starting guard checks for model request');
 
-      const isInjection = await detectInjection(input);
+      const isInjection = await detectInjection(collectModelRequestText(req));
       if (isInjection) {
         logger('warn', 'guard.intent.blocked', 'Prompt injection pattern detected', {
           reason: 'pattern_match',
@@ -237,10 +237,8 @@ function createGuardHooks(config?: GuardConfig) {
         score: intentResult.score,
         piiDetected: piiMatches.length > 0,
         piiTypes,
-        maskedInput: getInputText(req),
         piiModel: config?.pii?.model,
         piiMode: config?.pii?.mode,
-        piiClassifierOutput: piiResponse.classifier,
         piiEffectiveModel: piiResponse.effectiveModel,
         piiEffectiveMode: piiResponse.effectiveMode,
         piiUsedFallback: piiResponse.usedFallback,
@@ -354,17 +352,7 @@ function getInputText(req: any): string {
   }
 
   const lastMessage = req.messages?.[req.messages.length - 1];
-  const firstContent = lastMessage?.content?.[0];
-
-  if (typeof firstContent?.text === 'string') {
-    return firstContent.text;
-  }
-
-  if (typeof firstContent === 'string') {
-    return firstContent;
-  }
-
-  return collectStrings(lastMessage).join('\n');
+  return collectStrings(lastMessage?.content).join('\n');
 }
 
 function collectModelRequestText(req: any): string {
@@ -464,8 +452,12 @@ async function scanPII(text: string, config?: GuardConfig) {
 
 function getGuardState(ctx: any = {}): GuardState {
   ctx.context = ctx.context || {};
-  ctx.context[GUARD_CONTEXT_KEY] = ctx.context[GUARD_CONTEXT_KEY] || { tokenizers: [] };
-  return ctx.context[GUARD_CONTEXT_KEY];
+  let state = guardStates.get(ctx.context);
+  if (!state) {
+    state = { tokenizers: [] };
+    guardStates.set(ctx.context, state);
+  }
+  return state;
 }
 
 function pushTokenizer(ctx: any, tokenizer: PiiTokenizer) {

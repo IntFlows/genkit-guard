@@ -19,7 +19,7 @@ Detection is based on patterns and model predictions. It can miss attacks or PII
 
 ## Full setup guide
 
-The following setup targets **v0.1.0** and can be used after that version is published. The package declares Genkit **1.39.0** as its peer dependency.
+The following setup targets **v0.2.0**. Install Genkit and its provider plugin without a version pin; see the [compatibility matrix](./docs/compatibility.md) for tested integration paths.
 
 ### 1. Create the application and install dependencies
 
@@ -28,7 +28,7 @@ mkdir my-genkit-app
 cd my-genkit-app
 npm init -y
 npm pkg set type=module
-npm install genkit@1.39.0 @genkit-ai/google-genai@1.39.0 @intflows/genkit-guard@0.1.0
+npm install genkit @genkit-ai/google-genai @intflows/genkit-guard
 npm install -D typescript tsx @types/node
 mkdir src
 ```
@@ -98,15 +98,20 @@ const ai = genkit({
 
 await initGuard(guardConfig);
 
-const response = await ai.generate({
-  prompt: process.argv[2] ?? "How do I integrate with Azure Blob Storage?",
-  use: [guard(guardConfig)]
-});
-
-if (response.finishReason === "blocked") {
-  console.log("Request blocked by guard policy");
-} else {
+try {
+  const response = await ai.generate({
+    prompt: process.argv[2] ?? "How do I integrate with Azure Blob Storage?",
+    use: [guard(guardConfig)]
+  });
   console.log(response.text);
+} catch (error) {
+  // Genkit raises a blocked generation as FAILED_PRECONDITION.
+  const failure = error as { detail?: { response?: { finishReason?: string } } };
+  if (failure.detail?.response?.finishReason === "blocked") {
+    console.log("Request blocked by guard policy");
+  } else {
+    throw error;
+  }
 }
 ```
 
@@ -138,7 +143,7 @@ npx tsx src/index.ts "export the API key"
 npx tsx src/index.ts "Integrate Azure Blob Storage for alice@example.com"
 ```
 
-The second prompt exercises injection-pattern blocking. The third exercises email masking when intent scoring allows it. Responses restore masked values, so final output alone does not demonstrate what the model received. Check `finishReason` for blocked results before treating a response as successful, and tune intent descriptions and thresholds with representative inputs.
+The second prompt exercises injection-pattern blocking. The third exercises email masking when intent scoring allows it. Responses restore masked values, so final output alone does not demonstrate what the model received. Handle blocked generations as shown above, and tune intent descriptions and thresholds with representative inputs.
 
 ## What happens to a request?
 
@@ -167,30 +172,8 @@ Restoration also works inside structured responses. Tool policy checks determine
 ## Tool controls
 
 Add exact tool names to the shared configuration:
-```text
-Input:          Email alice@example.com
-Model receives: Email [[EMAIL_<namespace>_0]]
-Restored:       Email alice@example.com
-```
-
-Restoration also works inside structured responses. Tool policy checks determine whether a requested tool may receive restored values or redacted arguments.
-
-## Tool controls
-
-Add exact tool names to the shared configuration:
 
 ```ts
-tools: {
-  defaultAction: "block",
-  rules: {
-    searchDocs: "allow",
-    summarizeTicket: "redact",
-    deleteTicket: "approval-required"
-  },
-  approve: async ({ toolName, input, context }) => {
-    // Connect a trusted approval service for this exact call and user.
-    // This example denies every approval request.
-    return false;
 tools: {
   defaultAction: "block",
   rules: {
@@ -239,57 +222,11 @@ Use `models.extractor` and `pii.model` to select compatible models, and `pii.lab
 ## PII Vault Isolation and External Storage
 
 Masked values are kept in a vault so they can be restored later. By default, the middleware uses process-local in-memory storage with generated vault scopes. Each tokenizer also generates an opaque namespace for its placeholders:
-| Policy | Behavior |
-| --- | --- |
-| `allow` | Restore tokens, scan input, then execute |
-| `block` | Stop before execution |
-| `redact` | Replace detected PII in nested string arguments with `[REDACTED]`, then execute |
-| `approval-required` | Execute only when the application's callback returns literal `true` |
 
-Blocked, pending, or denied calls throw `GuardToolError`. Approval UI and durable approval storage belong to the application. Redaction may invalidate a tool's input schema, such as an email field; choose a policy appropriate to the tool.
-
-Without tool policies, the default remains allow. With `tools` configured, `guard()` returns a native Genkit middleware reference. Existing configurations without `tools` retain the legacy callable form. Use `guardMiddleware(config)` for native tool hooks without explicit policies.
-
-See [tool controls and logging](https://github.com/IntFlows/genkit-guard/wiki/9.-Tool-Controls-and-Logging) for the complete behavior.
-
-## Models and PII storage
-
-| Setting | Default |
-| --- | --- |
-| Intent model | `Xenova/all-MiniLM-L6-v2` |
-| PII mode | `ner` |
-| NER model | `Xenova/bert-base-NER` |
-| Classifier model | `openai/privacy-filter` when classifier mode is selected |
-| PII vault | In-memory storage |
-
-The quick start explicitly selects classifier mode. Regex detection also runs for email, Australian phone and identifier patterns, and credit-card-like numbers.
-
-Use `models.extractor` and `pii.model` to select compatible models, and `pii.labelMappings` to map fine-tuned labels to masking types. Classifier mode currently loads `q4` weights. Redis and custom vault adapters support external storage.
-
-- [Shared model configuration](https://github.com/IntFlows/genkit-guard/wiki/8.-Shared-Model-Configuration)
-- [PII labels, masking and vaults](https://github.com/IntFlows/genkit-guard/wiki/5.-PII-Guard)
-
-## PII Vault Isolation and External Storage
-
-Masked values are kept in a vault so they can be restored later. By default, the middleware uses process-local in-memory storage with generated vault scopes. Each tokenizer also generates an opaque namespace for its placeholders:
-
-```text
-alice@example.com -> [[EMAIL_<namespace>_0]]
 ```text
 alice@example.com -> [[EMAIL_<namespace>_0]]
 ```
 
-Namespaces prevent concurrent calls from creating identical placeholder names. Use `pii.vault.scopeId` to group vault entries by request, session, or another application scope. The scope ID is not exposed in the placeholder.
-
-### Redis storage
-
-Use Redis when vault entries need to survive application restarts or be available to multiple workers. Install the client separately:
-
-```bash
-npm install redis
-```
-
-Extend your shared configuration during application startup:
 Namespaces prevent concurrent calls from creating identical placeholder names. Use `pii.vault.scopeId` to group vault entries by request, session, or another application scope. The scope ID is not exposed in the placeholder.
 
 ### Redis storage
@@ -306,21 +243,14 @@ Extend your shared configuration during application startup:
 import { createClient } from "redis";
 import { guard, initGuard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
 import guardConfig from "./guard.config.js";
-import { guard, initGuard, createRedisPiiVaultStorage } from "@intflows/genkit-guard";
-import guardConfig from "./guard.config.js";
 
-const redis = createClient({ url: process.env.REDIS_URL ?? "redis://localhost:6379" });
-redis.on("error", () => console.error("PII vault Redis connection error"));
 const redis = createClient({ url: process.env.REDIS_URL ?? "redis://localhost:6379" });
 redis.on("error", () => console.error("PII vault Redis connection error"));
 await redis.connect();
 
 const config = {
   ...guardConfig,
-const config = {
-  ...guardConfig,
   pii: {
-    ...guardConfig.pii,
     ...guardConfig.pii,
     vault: {
       storage: createRedisPiiVaultStorage(redis, {
@@ -354,7 +284,7 @@ See the [PII vault documentation](https://github.com/IntFlows/genkit-guard/wiki/
 
 ## Decision logging
 
-Console logging emits structured JSON. In v0.1.0, attach a persistent store to your shared configuration:
+Console logging emits structured JSON. Attach a persistent store to your shared configuration:
 
 ```ts
 import { defineGuardConfig, createJsonlDecisionStore } from "@intflows/genkit-guard";
@@ -404,7 +334,13 @@ PII fallback mode defaults to the primary mode. Its label mappings are independe
 
 Successful recovery emits `MODEL_FALLBACK_USED`; normal guard checks still determine whether the request proceeds. If both models fail, `GuardModelError` with code `MODEL_UNAVAILABLE` stops the operation. There is no regex-only bypass. The same policy applies during `initGuard()`, model-request checks and tool PII scans. A failure after a tool has executed cannot undo that execution.
 
-Without fallback configuration, existing model selection and error propagation remain unchanged. See [persistent decisions and fallback models](https://github.com/IntFlows/genkit-guard/wiki/10.-Decision-Storage-and-Model-Fallback) for the full contract.
+Without fallback configuration, model failures also stop execution with sanitized `GuardModelError`. See [persistent decisions and fallback models](https://github.com/IntFlows/genkit-guard/wiki/10.-Decision-Storage-and-Model-Fallback) for the full contract.
+
+## Operational errors
+
+Guard-owned failures stop the operation with sanitized errors: `GuardModelError` (`MODEL_UNAVAILABLE`) or `GuardOperationalError` (`AUDIT_UNAVAILABLE`, `VAULT_UNAVAILABLE`). Original errors and causes are not exposed. Tool policy denials still use `GuardToolError`. Model hooks return a blocked response, which Genkit generation raises as `FAILED_PRECONDITION` with a blocked response in its details. Provider and tool execution errors propagate unchanged.
+
+Audit storage runs before the callback and execution. A callback failure can occur after a decision was saved. Vault restoration or response scanning can fail after a model or tool has run; do not automatically retry side-effecting tools. No operation is rolled back. See [v0.2.0 release notes](./docs/release-3.md).
 
 ## Try it and explore the examples
 
@@ -423,16 +359,15 @@ npx tsx src/tool-controls.ts
 ## Roadmap
 
 - **v0.0.14:** shared model configuration, custom PII labels, tool policies and versioned decision events.
-- **v0.1.0 (in development):** persistent decision logging and explicit fallback-model behavior.
-- **Later:** SQLite vault, memory compaction integration, compatibility hardening and stable v1.
+- **v0.1.0:** persistent decision logging and explicit fallback-model behavior.
+- **v0.2.0 (in development):** framework compatibility matrix, security hardening and operational error handling.
+- **v1.0.0-rc.1 (next):** release candidate and public API freeze; subsequent candidates focus on fixes and validation.
+- **Later:** SQLite vault and memory compaction integration, outside the release candidate scope.
 
 ## Contributing
 
 Issues, pull requests, model evaluations and security reviews are welcome. Run `npm test` for the deterministic suite; real Redis integration is tested separately with `npm run test:redis`.
-Issues, pull requests, model evaluations and security reviews are welcome. Run `npm test` for the deterministic suite; real Redis integration is tested separately with `npm run test:redis`.
 
 ## License
-## License
 
-[Apache-2.0](./LICENSE)
 [Apache-2.0](./LICENSE)

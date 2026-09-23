@@ -60,3 +60,10 @@ guard(nextVersion);
 void initGuard(nextVersion);
 createGuardDecisionStore({ append: async decision => { const version: '1' = decision.schemaVersion; } });
 const unavailable: string = new GuardModelError('pii').code;
+
+import { GuardOperationalError, guardMiddleware } from '../src/index.js';
+import { genkit } from 'genkit';
+const operationalCode: 'AUDIT_UNAVAILABLE' | 'VAULT_UNAVAILABLE' = new GuardOperationalError('VAULT_UNAVAILABLE').code;
+const ai = genkit({});
+void ai.generate({ prompt: 'Help', use: [guard(release1)] });
+void ai.generate({ prompt: 'Help', use: [guardMiddleware(shared)] });
