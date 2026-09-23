@@ -1,6 +1,6 @@
 # v0.1.0 - Release 2
 
-Scope: persistent decision logging and opt-in guard-model fallback. The existing README changes are preserved. Release 1 and the v0.0.14 wiki sources remain available.
+Historical scope: persistent decision logging and opt-in guard-model fallback. Current wiki documentation is maintained in `docs/wiki`; see `docs/release-3.md` for subsequent behavior changes.
 
 Acceptance criteria:
 

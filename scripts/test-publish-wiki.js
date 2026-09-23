@@ -26,5 +26,12 @@ test('wiki preview never pushes; publish updates pages and preserves unrelated f
     assert.equal(run('git', ['show', 'HEAD:Home.md'], remote), 'Preserve me');
     assert.doesNotMatch(run('git', ['ls-tree', '--name-only', 'HEAD'], remote), /README/);
     assert.match(run(process.execPath, [...args, '--publish']), /nothing to publish/);
+    // The consolidated wiki is the default source; preview must still be read-only.
+    const afterPublish = run('git', ['rev-parse', 'HEAD'], remote);
+    const defaultPreview = run(process.execPath, [resolve('scripts/publish-wiki.js'), '--repo', remote]);
+    assert.match(defaultPreview, /11\.-Framework-Compatibility/);
+    assert.match(defaultPreview, /12\.-Security-and-Operational-Errors/);
+    assert.match(defaultPreview, /Preview only/);
+    assert.equal(run('git', ['rev-parse', 'HEAD'], remote), afterPublish);
   } finally { rmSync(work, { recursive: true, force: true }); }
 });
