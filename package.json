@@ -47,7 +47,7 @@
     "wiki:publish": "node scripts/publish-wiki.js",
     "test:release1": "npm run build && node --test scripts/test-release1.js scripts/test-publish-wiki.js",
     "test:release2": "npm run build && node --test scripts/test-release2.js",
-    "test:release3": "npm run build && node --test scripts/test-release3.js"
+    "test:release3": "npm run build && node --test scripts/test-release3.js scripts/test-signatures.js"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",

@@ -9,6 +9,7 @@ Scope: framework compatibility matrix, security hardening and operational error 
 - Mask longer PII values first, ignore empty matches, and cache tokens only after vault writes succeed.
 - Sanitize guard model, audit delivery and tokenizer vault failures. Stop execution before downstream work when a required check fails; do not retry audit delivery or tools automatically.
 - Update Transformers.js and compatible transitive dependencies, and track the root lockfile for reproducible CI installs.
+- Restrict model-request checks, masking and response restoration to Genkit content fields. Preserve opaque provider metadata, including Gemini thought signatures, along with tool names and call references. Secret detection remains active inside text, structured data and tool payloads. Binary media and custom protocol payloads are not inspected.
 
 ## Dependency audit
 

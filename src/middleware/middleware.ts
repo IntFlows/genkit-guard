@@ -8,6 +8,7 @@ import { analyzeIntentStructured, detectInjection } from '../intent/intentAnalyz
 import { detectPII } from '../pii/detector.js';
 import { PiiTokenizer } from '../pii/tokenizer.js';
 import { defaultPiiVaultStorage, type PiiVaultStorage } from '../pii/storage.js';
+import { requestContentSlots, lastMessageContentSlots, responseContentSlots } from './content.js';
 
 const guardStates = new WeakMap<object, GuardState>();
 
@@ -246,7 +247,12 @@ function createGuardHooks(config?: GuardConfig) {
 
       const res = await next(req, ctx);
 
-      const unmaskedResponse = await unmaskObject(res, getGuardState(ctx).tokenizers);
+      const tokenizers = getGuardState(ctx).tokenizers;
+      let unmaskedResponse = res;
+      if (typeof res === 'string') unmaskedResponse = await unmaskObject(res, tokenizers);
+      else for (const { owner, key } of responseContentSlots(res)) {
+        owner[key] = await unmaskObject(owner[key], tokenizers);
+      }
       logger('info', 'guard.model.response.unmasked', 'Model response unmasked for downstream execution', {
         piiTypes,
       });
@@ -347,33 +353,16 @@ function createGuardHooks(config?: GuardConfig) {
 }
 
 function getInputText(req: any): string {
-  if (typeof req.prompt === 'string') {
-    return req.prompt;
-  }
-
-  const lastMessage = req.messages?.[req.messages.length - 1];
-  return collectStrings(lastMessage?.content).join('\n');
+  return lastMessageContentSlots(req).flatMap(({ owner, key }) => collectStrings(owner[key])).join('\n');
 }
 
 function collectModelRequestText(req: any): string {
-  return [
-    ...collectStrings(req?.prompt),
-    ...collectStrings(req?.messages),
-    ...collectStrings(req?.docs),
-  ].join('\n');
+  return requestContentSlots(req).flatMap(({ owner, key }) => collectStrings(owner[key])).join('\n');
 }
 
 async function maskModelRequest(req: any, tokenizer: PiiTokenizer, matches: { type: string; value: string }[]) {
-  if (typeof req.prompt === 'string') {
-    req.prompt = (await tokenizer.mask(req.prompt, matches)).maskedText;
-  }
-
-  if (req.messages) {
-    req.messages = await transformStrings(req.messages, async (value) => (await tokenizer.mask(value, matches)).maskedText);
-  }
-
-  if (req.docs) {
-    req.docs = await transformStrings(req.docs, async (value) => (await tokenizer.mask(value, matches)).maskedText);
+  for (const { owner, key } of requestContentSlots(req)) {
+    owner[key] = await transformStrings(owner[key], async (value) => (await tokenizer.mask(value, matches)).maskedText);
   }
 }
 

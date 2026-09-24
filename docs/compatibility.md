@@ -8,6 +8,7 @@ Install `genkit` and your provider plugin without pinning a release in setup ins
 | Genkit JavaScript, native `guardMiddleware(config)` | Model hooks and tool interception |
 | `guard(config)` with tool policies | Native allow, block, redact and approval-required execution |
 | Multi-turn tools | Token recovery, PII scanning, fallback and audit persistence |
+| Provider protocol metadata | Preserve thought signatures, tool names and call references through masking and restoration |
 | Structured responses | Nested string restoration |
 | Shared TypeScript configuration | Public `GuardConfig` accepted by native middleware and `ai.generate` |
 | Node.js 22 and 24 | CI matrix, minimum peer and latest stable Genkit |

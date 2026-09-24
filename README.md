@@ -169,6 +169,8 @@ Restored:       Email alice@example.com
 
 Restoration also works inside structured responses. Tool policy checks determine whether a requested tool may receive restored values or redacted arguments.
 
+Guard checks and masking process message/document text, reasoning text, structured data, and tool input/output payloads. Provider metadata (including Gemini thought signatures), tool names, call references, media/resource identifiers and custom protocol parts remain unchanged. Binary media and custom protocol payloads are not inspected. Fields named `metadata` or `thoughtSignature` inside application data or tool arguments still receive normal PII processing.
+
 ## Tool controls
 
 Add exact tool names to the shared configuration:
