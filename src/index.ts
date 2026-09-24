@@ -1,6 +1,7 @@
 export { createGuardDecisionStore, createJsonlDecisionStore, guardDecisionSchema } from './core/decision-storage.js';
 export type { GuardDecisionStore, JsonlDecisionStore } from './core/decision-storage.js';
 export { GuardModelError } from './util/fallback.js';
+export { GuardOperationalError } from './core/errors.js';
 import { runGuardModel } from './util/fallback.js';
 export * from './core/decision.js';
 import { resolveGuardModels } from './guard.config.js';

@@ -5,6 +5,7 @@ import { guard, guardMiddleware, GuardToolError } from '../dist/index.js';
 import { ModelSingleton } from '../dist/util/singleton.js';
 ModelSingleton.getExtractor = async () => async () => ({ tolist: () => [[1, 0], [1, 0]] });
 ModelSingleton.getNER = async () => async () => [];
+ModelSingleton.getPIIClassifier = async () => async () => [];
 const base = { intent: { semantic: { intents: { support: 'Support' } } }, logging: { enabled: false } };
 const request = () => ({ toolRequest: { name: 'sendEmail', input: { email: 'alice@example.com', nested: ['alice@example.com'] } } });
 
@@ -44,7 +45,7 @@ test('default block, unknown tools, invalid actions and callback failures stop e
   for (const tools of [{ defaultAction: 'block', rules: { other: 'allow' } }, { defaultAction: 'invalid' }]) {
     await assert.rejects(guard({ ...base, tools }).tool(request(), {}, () => assert.fail('Executed')), GuardToolError);
   }
-  await assert.rejects(guard({ ...base, logging: { enabled: false, onDecision: () => { throw new Error('sink unavailable'); } } }).tool(request(), {}, () => assert.fail('Executed')), /sink unavailable/);
+  await assert.rejects(guard({ ...base, logging: { enabled: false, onDecision: () => { throw new Error('sink unavailable'); } } }).tool(request(), {}, () => assert.fail('Executed')), /Guard audit delivery failed/);
 });
 
 test('prompt and tool events share contract; console does not include raw content', async () => {

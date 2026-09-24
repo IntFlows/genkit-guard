@@ -53,8 +53,8 @@ test('store delivery is awaited before callback and before tool; failure is clos
       .tool({ toolRequest: { name: 'lookup', input: {} } }, {}, async () => { order.push('executed'); });
     assert.deepEqual(order, ['stored', 'callback', 'executed']);
     const failing = guard({ ...base, tools: { defaultAction: 'allow' }, logging: { enabled: false, store: { append: () => { throw new Error('disk unavailable'); } } } });
-    await assert.rejects(failing.tool({ toolRequest: { name: 'lookup', input: {} } }, {}, () => assert.fail('executed')), /disk unavailable/);
-    await assert.rejects(failing.model({ prompt: 'Help' }, {}, () => assert.fail('executed')), /disk unavailable/);
+    await assert.rejects(failing.tool({ toolRequest: { name: 'lookup', input: {} } }, {}, () => assert.fail('executed')), /Guard audit delivery failed/);
+    await assert.rejects(failing.model({ prompt: 'Help' }, {}, () => assert.fail('executed')), /Guard audit delivery failed/);
   });
 });
 
@@ -137,15 +137,15 @@ test('both models failing stop startup and model/tool execution; no regex-only b
 test('audit callback failure after recovery never retries model work', async () => {
   let attempts = 0;
   await withModels({ getExtractor: async name => { attempts++; if (name === 'primary-intent') throw new Error('failed'); return async () => vectors(); } }, async () => {
-    await assert.rejects(initGuard({ ...base, logging: { enabled: false, onDecision: () => { throw new Error('audit unavailable'); } } }), /audit unavailable/);
+    await assert.rejects(initGuard({ ...base, logging: { enabled: false, onDecision: () => { throw new Error('audit unavailable'); } } }), /Guard audit delivery failed/);
     assert.equal(attempts, 2);
   });
 });
 
-test('no configured fallback preserves original error', async () => {
+test('no configured fallback sanitizes model errors', async () => {
   const original = new Error('original');
   await withModels({ getExtractor: async () => { throw original; } }, async () => {
-    await assert.rejects(initGuard(), error => error === original);
+    await assert.rejects(initGuard(), error => error instanceof GuardModelError && error.cause === undefined);
   });
 });
 
@@ -179,7 +179,7 @@ test('audit store failure after model recovery never retries or executes', async
     const config = { ...base, logging: { enabled: false, store: { append: d => {
       if (d.reasonCode === 'MODEL_FALLBACK_USED') throw new Error('store unavailable');
     } } } };
-    await assert.rejects(guard(config).model({ prompt: 'Help' }, {}, () => assert.fail('executed')), /store unavailable/);
+    await assert.rejects(guard(config).model({ prompt: 'Help' }, {}, () => assert.fail('executed')), /Guard audit delivery failed/);
     assert.equal(attempts, 2);
   });
 });

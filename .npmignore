@@ -8,3 +8,6 @@ dist/models/
 example-flow/
 example/
 coverage/
+scripts/test-release*.js
+scripts/publish-wiki.js
+scripts/test-publish-wiki.js

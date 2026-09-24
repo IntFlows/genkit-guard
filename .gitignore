@@ -3,6 +3,11 @@ models
 example/models/
 example/.genkit/
 package-lock.json
+!/package-lock.json
+
+# scripts/test-release*.js
+# scripts/publish-wiki.js
+# scripts/test-publish-wiki.js
 
 # Logs
 logs
