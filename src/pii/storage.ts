@@ -29,6 +29,8 @@ export type RedisPiiVaultClient = {
   hset?: (key: string, field: string, value: string) => Promise<unknown>;
   hgetall?: (key: string) => Promise<Record<string, string>>;
   expire?: (key: string, seconds: number) => Promise<unknown>;
+  /** Node-redis-compatible EVAL adapter. Required with ttlSeconds (Redis 7+). */
+  eval?: (script: string, options: { keys: string[]; arguments: string[] }) => Promise<unknown>;
 };
 
 export type RedisPiiVaultStorageOptions = {
@@ -43,6 +45,18 @@ export type RedisPiiVaultStorageOptions = {
   fallbackToMemory?: boolean;
 };
 
+// Each hash write and its expiry execute without client-side interleaving.
+// Redis 7+ ACL preflight prevents HSET succeeding when EXPIRE is denied.
+const writeExpiringHash = `
+if not redis.acl_check_cmd('HSET', KEYS[1], ARGV[1], ARGV[2]) or
+   not redis.acl_check_cmd('EXPIRE', KEYS[1], ARGV[3]) then
+  return redis.error_reply('ERR PII vault write permissions unavailable')
+end
+redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+redis.call('EXPIRE', KEYS[1], ARGV[3])
+return 1
+`;
+
 export function createRedisPiiVaultStorage(
   redis: RedisPiiVaultClient,
   options: RedisPiiVaultStorageOptions = {}
@@ -51,12 +65,12 @@ export function createRedisPiiVaultStorage(
   const tokenIndexKey = options.tokenIndexKey ?? `${keyPrefix}:tokens`;
   const ttlSeconds = options.ttlSeconds;
 
-  if (ttlSeconds !== undefined && (!Number.isInteger(ttlSeconds) || ttlSeconds <= 0)) {
-    throw new Error('Redis PII vault ttlSeconds must be a positive integer.');
+  if (ttlSeconds !== undefined && (!Number.isSafeInteger(ttlSeconds) || ttlSeconds <= 0 || ttlSeconds > 2_147_483_647)) {
+    throw new Error('Redis PII vault ttlSeconds must be a positive integer no greater than 2147483647.');
   }
 
-  if (ttlSeconds !== undefined && !redis.expire) {
-    throw new Error('Redis PII vault ttlSeconds requires an expire method on the Redis client.');
+  if (ttlSeconds !== undefined && typeof redis.eval !== 'function') {
+    throw new Error('Redis PII vault ttlSeconds requires an eval method on the Redis client and Redis 7 or newer.');
   }
 
   const hGet = redis.hGet?.bind(redis) ?? redis.hget?.bind(redis);
@@ -70,9 +84,13 @@ export function createRedisPiiVaultStorage(
   const scopeKey = (scopeId: string) => `${keyPrefix}:scope:${scopeId}`;
   const fallback = options.fallbackToMemory ? new ExpiringInMemoryPiiVaultStorage(ttlSeconds) : undefined;
 
-  async function maybeExpire(key: string) {
-    if (ttlSeconds !== undefined) {
-      await redis.expire!(key, ttlSeconds);
+  async function writeHash(key: string, token: string, value: string) {
+    if (ttlSeconds === undefined) {
+      await hSet!(key, token, value);
+    } else {
+      await redis.eval!(writeExpiringHash, {
+        keys: [key], arguments: [token, value, String(ttlSeconds)],
+      });
     }
   }
 
@@ -104,10 +122,8 @@ export function createRedisPiiVaultStorage(
       await fallback?.set(scopeId, token, value);
       await withFallback(
         async () => {
-          await hSet(scopedKey, token, value);
-          await hSet(tokenIndexKey, token, value);
-          await maybeExpire(scopedKey);
-          await maybeExpire(tokenIndexKey);
+          await writeHash(scopedKey, token, value);
+          await writeHash(tokenIndexKey, token, value);
         },
         () => undefined
       );
@@ -125,22 +141,34 @@ export function createRedisPiiVaultStorage(
 }
 
 class ExpiringInMemoryPiiVaultStorage implements PiiVaultStorage {
-  private readonly storage = new InMemoryPiiVaultStorage();
+  private readonly scopes = new Map<string, Map<string, string>>();
+  private readonly tokenIndex = new Map<string, string>();
   private readonly scopeExpiresAt = new Map<string, number>();
   private tokenIndexExpiresAt?: number;
 
   constructor(private readonly ttlSeconds?: number) {}
 
   get(scopeId: string, token: string) {
-    return this.isScopeExpired(scopeId) ? undefined : this.storage.get(scopeId, token);
+    this.expireScope(scopeId);
+    return this.scopes.get(scopeId)?.get(token);
   }
 
   getByToken(token: string) {
-    return this.isTokenIndexExpired() ? undefined : this.storage.getByToken(token);
+    this.expireTokenIndex();
+    return this.tokenIndex.get(token);
   }
 
   set(scopeId: string, token: string, value: string) {
-    this.storage.set(scopeId, token, value);
+    // Remove expired hashes before refreshing TTL, just as Redis does on HSET.
+    this.expireScope(scopeId);
+    this.expireTokenIndex();
+    let scope = this.scopes.get(scopeId);
+    if (!scope) {
+      scope = new Map<string, string>();
+      this.scopes.set(scopeId, scope);
+    }
+    scope.set(token, value);
+    this.tokenIndex.set(token, value);
     if (this.ttlSeconds !== undefined) {
       const expiry = Date.now() + this.ttlSeconds * 1_000;
       this.scopeExpiresAt.set(scopeId, expiry);
@@ -149,16 +177,23 @@ class ExpiringInMemoryPiiVaultStorage implements PiiVaultStorage {
   }
 
   entries(scopeId: string) {
-    return this.isScopeExpired(scopeId) ? [] : this.storage.entries(scopeId);
+    this.expireScope(scopeId);
+    return Array.from(this.scopes.get(scopeId) ?? [], ([token, value]) => ({ token, value }));
   }
 
-  private isScopeExpired(scopeId: string) {
+  private expireScope(scopeId: string) {
     const expiry = this.scopeExpiresAt.get(scopeId);
-    return expiry !== undefined && expiry <= Date.now();
+    if (expiry !== undefined && expiry <= Date.now()) {
+      this.scopes.delete(scopeId);
+      this.scopeExpiresAt.delete(scopeId);
+    }
   }
 
-  private isTokenIndexExpired() {
-    return this.tokenIndexExpiresAt !== undefined && this.tokenIndexExpiresAt <= Date.now();
+  private expireTokenIndex() {
+    if (this.tokenIndexExpiresAt !== undefined && this.tokenIndexExpiresAt <= Date.now()) {
+      this.tokenIndex.clear();
+      this.tokenIndexExpiresAt = undefined;
+    }
   }
 }
 
@@ -180,7 +215,7 @@ export class InMemoryPiiVaultStorage implements PiiVaultStorage {
   }
 
   entries(scopeId: string): PiiVaultEntry[] {
-    return Array.from(this.getScope(scopeId), ([token, value]) => ({ token, value }));
+    return Array.from(this.scopes.get(scopeId) ?? [], ([token, value]) => ({ token, value }));
   }
 
   private getScope(scopeId: string) {

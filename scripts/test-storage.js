@@ -24,6 +24,12 @@ class FakeRedis {
     return this.hashes.get(key) ?? {};
   }
 
+  async eval(_script, { keys, arguments: args }) {
+    await this.hSet(keys[0], args[0], args[1]);
+    await this.expire(keys[0], Number(args[2]));
+    return 1;
+  }
+
   async expire(key, seconds) {
     this.expirations.set(key, seconds);
   }
@@ -131,7 +137,203 @@ assert.throws(
       { hGet: async () => null, hSet: async () => undefined, hGetAll: async () => ({}) },
       { ttlSeconds: 60 }
     ),
-  /requires an expire method/
+  /requires an eval method/
 );
 
+// Without TTL, two separate HSET commands can leave partial data.
+class PartialFailureRedis extends FakeRedis {
+  writeStep = 0;
+  readFailed = false;
+  constructor(failAt) {
+    super();
+    this.failAt = failAt;
+  }
+  async hGet(key, field) {
+    if (this.readFailed) throw new Error('Read outage');
+    return super.hGet(key, field);
+  }
+  async hGetAll(key) {
+    if (this.readFailed) throw new Error('Read outage');
+    return super.hGetAll(key);
+  }
+  checkWrite() {
+    if (++this.writeStep === this.failAt) throw new Error('Injected partial write failure');
+  }
+  async hSet(key, field, value) {
+    this.checkWrite();
+    return super.hSet(key, field, value);
+  }
+  async eval(_script, { keys, arguments: args }) {
+    await this.hSet(keys[0], args[0], args[1]);
+    await this.expire(keys[0], Number(args[2]));
+    return 1;
+  }
+
+  async expire(key, seconds) {
+    this.checkWrite();
+    return super.expire(key, seconds);
+  }
+}
+for (const failAt of [1, 2]) {
+  for (const fallbackToMemory of [false, true]) {
+    const partial = new PartialFailureRedis(failAt);
+    const vault = createRedisPiiVaultStorage(partial, {
+      keyPrefix: 'partial', fallbackToMemory,
+    });
+    const write = () => vault.set('scope', 'token', 'synthetic@example.com');
+    if (fallbackToMemory) await write();
+    else await assert.rejects(write, /Injected partial write failure/);
+    assert.equal(partial.hashes.get('partial:scope:scope')?.token,
+      failAt > 1 ? 'synthetic@example.com' : undefined);
+    assert.equal(partial.hashes.get('partial:tokens')?.token,
+      failAt > 2 ? 'synthetic@example.com' : undefined);
+    assert.equal(partial.expirations.get('partial:scope:scope'), undefined);
+    assert.equal(partial.expirations.get('partial:tokens'), undefined);
+    // A successful Redis miss is authoritative, even with a warmed mirror.
+    assert.equal(await vault.getByToken('token'), failAt > 2 ? 'synthetic@example.com' : undefined);
+    if (fallbackToMemory) {
+      partial.readFailed = true;
+      assert.equal(await vault.get('scope', 'token'), 'synthetic@example.com');
+      assert.equal(await vault.getByToken('token'), 'synthetic@example.com');
+      assert.deepEqual(await vault.entries('scope'), [{ token: 'token', value: 'synthetic@example.com' }]);
+      partial.readFailed = false;
+    }
+    // Retrying this idempotent storage write completes both hashes and TTLs.
+    await write();
+    assert.equal(partial.expirations.get('partial:scope:scope'), undefined);
+    assert.equal(partial.expirations.get('partial:tokens'), undefined);
+  }
+}
+
+class ScriptFailureRedis extends FakeRedis {
+  calls = 0;
+  constructor(failAt, committed) { super(); this.failAt = failAt; this.committed = committed; }
+  async eval(script, options) {
+    if (++this.calls === this.failAt) {
+      if (this.committed) await super.eval(script, options);
+      throw new Error('Script acknowledgement unavailable');
+    }
+    return super.eval(script, options);
+  }
+}
+for (const failAt of [1, 2]) {
+  for (const committed of [false, true]) {
+    for (const fallbackToMemory of [false, true]) {
+      const client = new ScriptFailureRedis(failAt, committed);
+      const vault = createRedisPiiVaultStorage(client, { ttlSeconds: 60, fallbackToMemory });
+      const write = () => vault.set('scope', 'token', 'synthetic@example.com');
+      if (fallbackToMemory) await write();
+      else await assert.rejects(write, /acknowledgement unavailable/);
+      // Every hash the server committed has a TTL, even after an ambiguous reply.
+      for (const key of client.hashes.keys()) assert.equal(client.expirations.get(key), 60);
+      assert.equal(client.hashes.size, failAt - 1 + Number(committed));
+      await write();
+      assert.equal(await vault.getByToken('token'), 'synthetic@example.com');
+      assert.equal(client.hashes.size, 2);
+    }
+  }
+}
+for (const ttlSeconds of [NaN, Infinity, -1, 0, 1.5, 2147483648, Number.MAX_SAFE_INTEGER]) {
+  assert.throws(() => createRedisPiiVaultStorage(new FakeRedis(), { ttlSeconds }), /positive integer/);
+}
+assert.throws(() => createRedisPiiVaultStorage({
+  hGet: async () => null, hSet: async () => {}, hGetAll: async () => ({}), expire: async () => 1,
+}, { ttlSeconds: 1 }), /requires an eval method/);
+// Recovery never replays memory-only writes or merges them into successful Redis reads.
+const recoveringRedis = new FailingRedis();
+const recovering = createRedisPiiVaultStorage(recoveringRedis, { fallbackToMemory: true });
+await recovering.set('recovery', 'before', 'before@example.com');
+recoveringRedis.fail();
+await recovering.set('recovery', 'during', 'during@example.com');
+assert.equal(await recovering.get('recovery', 'during'), 'during@example.com');
+assert.equal(await recovering.getByToken('during'), 'during@example.com');
+recoveringRedis.failed = false;
+assert.equal(await recovering.get('recovery', 'before'), 'before@example.com');
+assert.equal(await recovering.get('recovery', 'during'), undefined);
+assert.equal(await recovering.getByToken('during'), undefined);
+assert.deepEqual(await recovering.entries('recovery'), [{ token: 'before', value: 'before@example.com' }]);
+recoveringRedis.fail();
+assert.equal(await recovering.getByToken('during'), 'during@example.com');
+
+for (const operation of [
+  () => strictStorage.set('scope', 'token', 'synthetic@example.com'),
+  () => strictStorage.getByToken('token'),
+  () => strictStorage.entries('scope'),
+]) await assert.rejects(operation, /Redis unavailable/);
+// Use a controlled clock to test expiry without sleeps or a live Redis server.
+const originalNow = Date.now;
+let now = 0;
+Date.now = () => now;
+try {
+  const unavailable = new FailingRedis();
+  unavailable.fail();
+  const expiring = createRedisPiiVaultStorage(unavailable, {
+    ttlSeconds: 1,
+    fallbackToMemory: true,
+  });
+  await expiring.set('scope-a', 'old', 'old@example.com');
+  now = 999;
+  assert.equal(await expiring.get('scope-a', 'old'), 'old@example.com');
+  now = 1000;
+  // A write at the expiry boundary must not revive old scoped or indexed values.
+  await expiring.set('scope-a', 'new', 'new@example.com');
+  assert.equal(await expiring.get('scope-a', 'old'), undefined);
+  assert.equal(await expiring.getByToken('old'), undefined);
+  assert.deepEqual(await expiring.entries('scope-a'), [
+    { token: 'new', value: 'new@example.com' },
+  ]);
+  assert.equal(await expiring.getByToken('new'), 'new@example.com');
+
+  // The shared index can remain alive while an individual scope expires.
+  now = 1500;
+  await expiring.set('scope-b', 'other', 'other@example.com');
+  now = 2000;
+  assert.equal(await expiring.getByToken('new'), 'new@example.com');
+  await expiring.set('scope-a', 'replacement', 'replacement@example.com');
+  assert.equal(await expiring.get('scope-a', 'new'), undefined);
+  assert.equal(await expiring.getByToken('new'), 'new@example.com');
+  assert.equal(await expiring.get('scope-b', 'other'), 'other@example.com');
+
+  now = 3000;
+  assert.equal(await expiring.get('scope-a', 'replacement'), undefined);
+  assert.deepEqual(await expiring.entries('scope-a'), []);
+  assert.equal(await expiring.getByToken('replacement'), undefined);
+  await expiring.set('scope-b', 'fresh', 'fresh@example.com');
+  assert.equal(await expiring.get('scope-b', 'other'), undefined);
+  assert.equal(await expiring.getByToken('new'), undefined);
+  assert.equal(await expiring.getByToken('other'), undefined);
+  assert.equal(await expiring.getByToken('fresh'), 'fresh@example.com');
+
+  // Refreshing a live scope retains its existing entries.
+  now = 3500;
+  await expiring.set('scope-b', 'fresh-2', 'fresh-2@example.com');
+  now = 4000;
+  assert.equal(await expiring.get('scope-b', 'fresh'), 'fresh@example.com');
+  now = 4500;
+  assert.equal(await expiring.getByToken('fresh'), undefined);
+} finally {
+  Date.now = originalNow;
+}
+// Real classifiers can report opaque token names or fragments as PII.
+// Protect both incoming placeholders and placeholders created by earlier matches.
+const opaque = '[[EMAIL_priornamespace_0]]';
+const opaqueMemory = new InMemoryPiiVaultStorage();
+opaqueMemory.set('opaque', opaque, 'owner@example.com');
+const opaqueTokenizer = new PiiTokenizer({ scopeId: 'opaque', storage: opaqueMemory });
+const protectedResult = await opaqueTokenizer.mask(`Existing ${opaque}; email alice@example.com`, [
+  { type: 'EMAIL', value: opaque },
+  { type: 'EMAIL', value: 'priornamespace' },
+  { type: 'EMAIL', value: 'alice@example.com' },
+  { type: 'EMAIL', value: 'EMAIL' },
+]);
+assert.ok(protectedResult.maskedText.includes(opaque));
+assert.doesNotMatch(protectedResult.maskedText, /alice@example\.com/);
+assert.equal(Object.keys(protectedResult.pii).length, 2);
+assert.equal(await opaqueTokenizer.unmask(protectedResult.maskedText),
+  'Existing owner@example.com; email alice@example.com');
+// A matching fragment outside the placeholder still receives normal masking.
+const plainFragment = await opaqueTokenizer.mask(`EMAIL ${opaque}`, [{ type: 'NAME', value: 'EMAIL' }]);
+assert.ok(plainFragment.maskedText.endsWith(opaque));
+assert.match(plainFragment.maskedText, /^\[\[NAME_/);
+assert.equal(await opaqueTokenizer.unmask(plainFragment.maskedText), 'EMAIL owner@example.com');
 console.log('PII vault storage tests passed.');

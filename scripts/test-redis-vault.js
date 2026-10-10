@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import net from 'node:net';
+import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { createRedisPiiVaultStorage } from '../dist/index.js';
 import { PiiTokenizer } from '../dist/pii/tokenizer.js';
 
@@ -24,6 +26,10 @@ class RespRedisClient {
       out[values[i]] = values[i + 1];
     }
     return out;
+  }
+
+  async eval(script, { keys, arguments: args }) {
+    return this.command('EVAL', script, String(keys.length), ...keys, ...args);
   }
 
   async expire(key, seconds) {
@@ -68,8 +74,12 @@ class RespRedisClient {
 }
 
 const redis = new RespRedisClient(process.env.REDIS_HOST ?? '127.0.0.1', Number(process.env.REDIS_PORT ?? 6379));
-const keyPrefix = `genkit-guard:test:${Date.now()}`;
+const keyPrefix = `genkit-guard:test:${randomUUID()}`;
 const storage = createRedisPiiVaultStorage(redis, { keyPrefix, ttlSeconds: 60 });
+const cleanupKeys = new Set([`${keyPrefix}:tokens`]);
+for (const scope of ['tenant:userA', 'tenant:userB', 'tenant:userA:later']) {
+  cleanupKeys.add(`${keyPrefix}:scope:${scope}`);
+}
 
 try {
   const userA = new PiiTokenizer({ scopeId: 'tenant:userA', storage });
@@ -90,12 +100,55 @@ try {
   await laterPass.importTokens(maskedA.maskedText);
   assert.equal(await laterPass.unmask(maskedA.maskedText), 'Email alice@example.com');
 
-  console.log('Live Redis PII vault test passed.');
+  // Concurrent writes in one scope and across scopes must preserve every token.
+  const writes = Array.from({ length: 20 }, (_, i) => ({
+    scope: i < 10 ? 'shared' : `concurrent-${i}`,
+    token: `token-${i}`,
+    value: `synthetic-${i}@example.com`,
+  }));
+  for (const { scope } of writes) cleanupKeys.add(`${keyPrefix}:scope:${scope}`);
+  await Promise.all(writes.map(({ scope, token, value }) => storage.set(scope, token, value)));
+  for (const { scope, token, value } of writes) {
+    assert.equal(await storage.get(scope, token), value);
+    assert.equal(await storage.getByToken(token), value);
+  }
+  assert.equal((await storage.entries('shared')).length, 10);
+
+  for (const key of cleanupKeys) {
+    assert.ok(await redis.command('TTL', key) > 0, `Missing TTL on ${key}`);
+  }
+  // A wrong-type index rejects the second script; the completed scope retains its TTL.
+  const partialPrefix = `${keyPrefix}:partial`;
+  const partialScope = `${partialPrefix}:scope:partial`;
+  const partialIndex = `${partialPrefix}:tokens`;
+  cleanupKeys.add(partialScope);
+  cleanupKeys.add(partialIndex);
+  await redis.command('SET', partialIndex, 'wrong-type');
+  const partial = createRedisPiiVaultStorage(redis, { keyPrefix: partialPrefix, ttlSeconds: 60 });
+  await assert.rejects(partial.set('partial', 'token', 'synthetic@example.com'), /WRONGTYPE/);
+  assert.ok(await redis.command('TTL', partialScope) > 0);
+  assert.equal(await partial.get('partial', 'token'), 'synthetic@example.com');
+  const expiryPrefix = `${keyPrefix}:expiry`;
+  cleanupKeys.add(`${expiryPrefix}:tokens`);
+  cleanupKeys.add(`${expiryPrefix}:scope:expiry`);
+  const expiring = createRedisPiiVaultStorage(redis, { keyPrefix: expiryPrefix, ttlSeconds: 1 });
+  await expiring.set('expiry', 'old', 'old@example.com');
+  assert.equal(await expiring.get('expiry', 'old'), 'old@example.com');
+  const deadline = Date.now() + 5000;
+  while (await redis.command('EXISTS', `${expiryPrefix}:scope:expiry`, `${expiryPrefix}:tokens`)) {
+    assert.ok(Date.now() < deadline, 'Redis vault keys did not expire within five seconds');
+    await delay(50);
+  }
+  assert.equal(await expiring.get('expiry', 'old'), undefined);
+  assert.equal(await expiring.getByToken('old'), undefined);
+  assert.deepEqual(await expiring.entries('expiry'), []);
+  await expiring.set('expiry', 'new', 'new@example.com');
+  assert.equal(await expiring.get('expiry', 'old'), undefined);
+  assert.equal(await expiring.getByToken('old'), undefined);
+  assert.equal(await expiring.getByToken('new'), 'new@example.com');
+  console.log('Live Redis PII vault tests passed: isolation, cross-turn restoration, concurrent writes and expiry.');
 } finally {
-  await redis.del(`${keyPrefix}:tokens`).catch(() => {});
-  await redis.del(`${keyPrefix}:scope:tenant:userA`).catch(() => {});
-  await redis.del(`${keyPrefix}:scope:tenant:userB`).catch(() => {});
-  await redis.del(`${keyPrefix}:scope:tenant:userA:later`).catch(() => {});
+  await Promise.all([...cleanupKeys].map((key) => redis.del(key)));
 }
 
 function encodeCommand(parts) {

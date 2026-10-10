@@ -21,3 +21,7 @@ The compatibility workflow runs on pushes, pull requests, manual dispatch and we
 Run `npm ci` and `npm test` locally. To check the newest stable Genkit without changing the lockfile, run `npm install --no-save --package-lock=false genkit@latest`, then `npm test`. Restore the locked installation with `npm ci`.
 
 Tests stub local inference to avoid model downloads and provider credentials. Real model quality, deployment-specific native inference binaries and Redis connectivity need separate environment validation; use `npm run test:redis` for a configured Redis service.
+
+A separate CI job runs the real Redis suite against a Redis 7 service on Node.js 22, covering scoped isolation, cross-turn restoration, concurrent writes and TTL expiry. This job does not download models or call providers.
+
+Each compatibility target also installs the packed tarball into a clean temporary consumer and verifies public imports, declarations and Genkit blocking without model downloads. TTL-enabled Redis adapters now require Redis 7+ and a node-redis-compatible EVAL adapter; see the v0.3.0 migration notes. Local Redis 8.10.2 passed; remote Redis 7 coverage remains unverified.

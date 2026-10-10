@@ -42,4 +42,4 @@ Vault scopes and tokens are not tenant authorization. Use isolated adapters/pref
 
 ## Next release
 
-**v1.0.0-rc.1** is the next planned release candidate and the public API freeze. Freeze exports, configuration, decision schema and error codes at that candidate. Subsequent candidates focus on fixes and compatibility validation; API changes require explicit review before stable v1. SQLite vault and memory compaction are deferred.
+**v0.3.0** is the next planned milestone for storage correctness, package validation and operational readiness; see the [stability checklist](./stability-v0.3.0.md). **v1.0.0-rc.1** follows as the release candidate and the public API freeze. Freeze exports, configuration, decision schema and error codes at that candidate. Subsequent candidates focus on fixes and compatibility validation; API changes require explicit review before stable v1. SQLite vault and memory compaction are deferred.

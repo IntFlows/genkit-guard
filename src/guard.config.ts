@@ -1,3 +1,4 @@
+import { validateGuardConfig } from './core/config.js';
 import type { GuardConfig } from './middleware/middleware.js';
 
 /** Model labels (case insensitive, optional BIOES prefix) to masking token types. */
@@ -5,6 +6,7 @@ export type PiiLabelMappings = Record<string, string | null>;
 
 /** Define an application-owned guard.config.ts and pass it to both public APIs. */
 export function defineGuardConfig(config: GuardConfig): GuardConfig {
+  validateGuardConfig(config);
   return config;
 }
 
