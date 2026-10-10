@@ -190,7 +190,7 @@ test('invalid label configuration and downstream failures do not trigger fallbac
     getNER: async () => { backups++; return async () => []; },
   }, async () => {
     const config = { ...base, pii: { ...base.pii, labelMappings: { private_person: 'bad-type' } } };
-    await assert.rejects(guard(config).model({ prompt: 'Help Alice' }, {}, () => assert.fail('executed')), /uppercase/);
+    assert.throws(() => guard(config), /Invalid guard configuration/);
     await assert.rejects(guard(base).model({ prompt: 'Help Alice' }, {}, () => { throw new Error('downstream failed'); }), /downstream failed/);
     assert.equal(backups, 0);
   });

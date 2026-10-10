@@ -4,6 +4,7 @@ import { runGuardModel } from '../util/fallback.js';
 import { GuardToolError, type GuardDecision, type GuardAction, type ToolGuardConfig } from '../core/decision.js';
 import { resolveGuardModels, type PiiLabelMappings } from '../guard.config.js';
 import { generateMiddleware, z } from 'genkit';
+import { guardConfigSchema, validateGuardConfig } from '../core/config.js';
 import { analyzeIntentStructured, detectInjection } from '../intent/intentAnalyzer.js';
 import { detectPII } from '../pii/detector.js';
 import { PiiTokenizer } from '../pii/tokenizer.js';
@@ -11,49 +12,6 @@ import { defaultPiiVaultStorage, type PiiVaultStorage } from '../pii/storage.js'
 import { requestContentSlots, lastMessageContentSlots, responseContentSlots } from './content.js';
 
 const guardStates = new WeakMap<object, GuardState>();
-
-const toolActionSchema = z.enum(['allow', 'block', 'redact', 'approval-required']);
-const guardConfigSchema = z.object({
-  policyVersion: z.string().optional(),
-  tools: z.object({
-    defaultAction: toolActionSchema.optional(),
-    rules: z.record(z.string(), toolActionSchema).optional(),
-    approve: z.any().optional(),
-  }).optional(),
-  intent: z.object({
-    mode: z.string().optional(),
-    allowedIntent: z.string().optional(),
-    semantic: z.object({
-      threshold: z.number().optional(),
-      intents: z.record(z.string(), z.string()),
-    }).optional(),
-  }).optional(),
-  pii: z.object({
-    reversible: z.boolean().optional(),
-    model: z.string().optional(),
-    mode: z.enum(['ner', 'classifier']).optional(),
-    fallback: z.object({
-      model: z.string(), mode: z.enum(['ner', 'classifier']).optional(),
-      labelMappings: z.record(z.string(), z.string().regex(/^[A-Z_]+$/).nullable()).optional(),
-    }).optional(),
-    labelMappings: z.record(z.string(), z.string().regex(/^[A-Z_]+$/).nullable()).optional(),
-    vault: z.object({
-      storage: z.any().optional(),
-      scopeId: z.any().optional(),
-    }).optional(),
-  }).optional(),
-  logging: z.object({
-    enabled: z.boolean().optional(),
-    level: z.enum(['debug', 'info', 'warn', 'error']).optional(),
-    serviceName: z.string().optional(),
-    onDecision: z.any().optional(),
-    store: z.any().optional(),
-  }).optional(),
-  models: z.object({
-    extractor: z.string().optional(),
-    extractorFallback: z.string().optional(),
-  }).optional(),
-}).passthrough();
 
 export type GuardConfig = {
   policyVersion?: string;
@@ -102,7 +60,7 @@ export const guardMiddleware = generateMiddleware(
   {
     name: 'genkitGuard',
     description: 'Blocks prompt injection and disallowed intent, masks PII before model calls, restores PII for tool calls, and audits tool PII access.',
-    configSchema: guardConfigSchema,
+    configSchema: guardConfigSchema as z.ZodType<GuardConfig>,
   },
   ({ config }) => createGuardHooks(config)
 );
@@ -151,6 +109,7 @@ export function guard(config?: GuardConfig): NativeGuard | LegacyGuard {
 export const guardAction = guard;
 
 function createGuardHooks(config?: GuardConfig) {
+  validateGuardConfig(config);
   const logger = createLogger(config);
   const models = resolveGuardModels(config);
   const decide = (start: number, fields: Pick<GuardDecision, 'guard' | 'action' | 'reasonCode'> & { confidence?: number }) =>

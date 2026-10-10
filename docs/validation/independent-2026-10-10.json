@@ -1,0 +1,53 @@
+{
+  "runId": "296002d5-4732-4668-a333-67e76cef6787",
+  "timestamp": "2026-10-10T11:54:55.745Z",
+  "node": "v22.22.1",
+  "packageVersion": "0.2.0",
+  "genkitVersion": "1.42.0",
+  "redisVersion": "8.10.2",
+  "artifact": {
+    "resolved": "file:vendor/intflows-genkit-guard-0.2.0.tgz",
+    "integrity": "sha512-ztHvMQNE5GEbyiYwIXRtMaQ45BKA5TxdYMASkRag6o82Oi/aaasQcPf0wtL50031sm3QN1+GfnI1TCDiONKkfA=="
+  },
+  "models": {
+    "intent": "Xenova/all-MiniLM-L6-v2",
+    "pii": "openai/privacy-filter",
+    "dtype": "q4"
+  },
+  "provider": "controlled Genkit model; no live Gemini calls",
+  "durationMs": 7701,
+  "peakRssMiB": 2068,
+  "passed": true,
+  "expectedCases": 5,
+  "results": [
+    {
+      "name": "legacy guard",
+      "passed": true,
+      "modelRequests": 3,
+      "toolExecutions": 1,
+      "durationMs": 1317
+    },
+    {
+      "name": "native guard with allow policy",
+      "passed": true,
+      "modelRequests": 3,
+      "toolExecutions": 1,
+      "durationMs": 1403
+    },
+    {
+      "name": "native guardMiddleware",
+      "passed": true,
+      "modelRequests": 3,
+      "toolExecutions": 1,
+      "durationMs": 1390
+    },
+    {
+      "name": "injection blocking",
+      "passed": true
+    },
+    {
+      "name": "real intent rejection",
+      "passed": true
+    }
+  ]
+}

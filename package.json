@@ -22,14 +22,14 @@
     "huggingface"
   ],
   "license": "Apache-2.0",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "README.md",
     "package.json",
-    "scripts/",
+    "scripts/download-model.js",
     "dist/"
   ],
   "scripts": {
@@ -43,6 +43,8 @@
     "test:concurrency": "npm run build && node scripts/test-concurrent-vault.js",
     "test:redis": "npm run build && node scripts/test-redis-vault.js",
     "prepublishOnly": "npm run build",
+    "test:independent": "node scripts/test-independent-app.js",
+    "test:package": "npm run build && node scripts/test-package.js",
     "test:config": "npm run build && node scripts/test-config.js",
     "wiki:publish": "node scripts/publish-wiki.js",
     "test:release1": "npm run build && node --test scripts/test-release1.js scripts/test-publish-wiki.js",
@@ -54,11 +56,11 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "genkit": ">=1.39.0 <2"
+    "genkit": "^1.42.0"
   },
   "devDependencies": {
     "@types/node": "^25.8.0",
-    "genkit": "^1.39.0",
+    "genkit": "^1.42.0",
     "typescript": "^6.0.3"
   },
   "engines": {

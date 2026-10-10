@@ -1,3 +1,4 @@
+import { validateGuardConfig } from './core/config.js';
 export { createGuardDecisionStore, createJsonlDecisionStore, guardDecisionSchema } from './core/decision-storage.js';
 export type { GuardDecisionStore, JsonlDecisionStore } from './core/decision-storage.js';
 export { GuardModelError } from './util/fallback.js';
@@ -51,6 +52,7 @@ function logGuardEvent(eventName: string, body: string, attributes: Record<strin
  * Pre-load the model to avoid cold-start delay on first user request.
  */
 export async function initGuard(config?: GuardConfig) {
+  validateGuardConfig(config);
   logGuardEvent('guard.models.loading', 'Loading local guard models');
 
   const { extractor, pii, mode: piiMode } = resolveGuardModels(config);

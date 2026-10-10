@@ -42,7 +42,10 @@ export class PiiTokenizer {
 
     for (const match of [...matches].sort((a, b) => b.value.length - a.value.length)) {
       if (!match.value) continue;
-      if (!masked.includes(match.value)) {
+      // Existing opaque placeholders are already masked. Classifiers may label their
+      // names or namespace fragments as PII; replacing those breaks later restoration.
+      const parts = masked.split(/(\[\[[A-Z_]+_[A-Za-z0-9]+_\d+\]\])/g);
+      if (!parts.some((part, index) => index % 2 === 0 && part.includes(match.value))) {
         continue;
       }
 
@@ -57,7 +60,8 @@ export class PiiTokenizer {
 
       this.piiTypes.add(match.type.toLowerCase());
 
-      masked = masked.split(match.value).join(token);
+      masked = parts.map((part, index) => index % 2 === 0
+        ? part.split(match.value).join(token!) : part).join('');
     }
 
     return {

@@ -102,7 +102,7 @@ export const integrationFlow = ai.defineFlow(
     });
 
     console.log('\n================ [MIDDLEWARE HISTORY TRACE] ================');
-    console.log('🔍 Complete message loop history sent over the wire to LLM provider:');
+    console.log('🔍 Application response history after guard restoration (not a provider request capture):');
     console.log(JSON.stringify(response.messages, null, 2));
     console.log('=============================================================\n');
 

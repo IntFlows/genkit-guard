@@ -274,7 +274,7 @@ const middleware = guard(config);
 
 `ttlSeconds` expires the scoped vault and shared token-index keys; writes refresh their expiry, so it is not a per-entry retention deadline. Without a TTL, Redis entries remain until removed externally. The default in-memory vault has no automatic expiry.
 
-`fallbackToMemory: true` enables a process-local mirror with the same TTL behavior when Redis operations fail. It is disabled by default, so Redis errors propagate. The mirror is not shared across workers, does not survive restarts, and is not automatically replayed into Redis after recovery.
+`fallbackToMemory: true` enables a process-local mirror with the same TTL behavior when Redis operations fail. It is disabled by default, so Redis errors propagate. The mirror is not shared across workers, does not survive restarts, and is not automatically replayed into Redis after recovery. After recovery, successful Redis reads are authoritative: a missing value or empty scope does not consult the mirror, so memory-only writes can become unavailable. With TTL enabled, each hash write and expiry execute in one Redis script with permission checks before writing (Redis 7+ and an `eval`-capable client are required). The scope and token index are still separate writes: a failure can leave only one updated, but each completed script sets its TTL. A lost reply may mean the server completed the write; fallback does not roll back or replay it. Scripts are not a transaction rollback or a guarantee against server crashes. Existing keys left without TTL by older versions need separate inspection and cleanup.
 
 ### Custom storage and isolation boundaries
 
@@ -362,13 +362,16 @@ npx tsx src/tool-controls.ts
 
 - **v0.0.14:** shared model configuration, custom PII labels, tool policies and versioned decision events.
 - **v0.1.0:** persistent decision logging and explicit fallback-model behavior.
-- **v0.2.0 (in development):** framework compatibility matrix, security hardening and operational error handling.
-- **v1.0.0-rc.1 (next):** release candidate and public API freeze; subsequent candidates focus on fixes and validation.
+- **v0.2.0:** framework compatibility matrix, security hardening and operational error handling.
+- **v0.3.0 (next):** storage correctness, package validation and operational readiness; see the [stability checklist](./docs/stability-v0.3.0.md).
+- **v1.0.0-rc.1:** release candidate and public API freeze; subsequent candidates focus on fixes and validation.
 - **Later:** SQLite vault and memory compaction integration, outside the release candidate scope.
 
 ## Contributing
 
-Issues, pull requests, model evaluations and security reviews are welcome. Run `npm test` for the deterministic suite; real Redis integration is tested separately with `npm run test:redis`.
+Issues, pull requests, model evaluations and security reviews are welcome. For local real-model checks in the separate consumer app, see [independent testing](./docs/independent-testing.md) and run `npm run test:independent`.
+
+Run `npm test` for the deterministic suite, `npm run test:package` for clean consumer validation, and `npm run test:redis` for real Redis integration. See the [v0.3.0 migration notes](./docs/release-4.md) for TTL adapter requirements and earlier configuration validation.
 
 ## License
 

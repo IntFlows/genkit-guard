@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { guard, initGuard, defineGuardConfig } from '../dist/index.js';
+import { guard, guardMiddleware, initGuard, defineGuardConfig } from '../dist/index.js';
 import { ModelSingleton } from '../dist/util/singleton.js';
 import { detectPII, privacyFilterOutputToMatches } from '../dist/pii/detector.js';
 const calls = [];
@@ -12,6 +12,24 @@ for (const method of ['getExtractor', 'getNER', 'getPIIClassifier']) {
   };
 }
 try {
+  for (const invalid of [
+    { pii: { mode: 'unknown' } }, { pii: { model: '' } },
+    { pii: { labelMappings: { PER: 'bad-type' } } },
+    { pii: { vault: { storage: {}, scopeId: 123 } } },
+    { logging: { onDecision: true } }, { logging: { store: {} } },
+    { tools: { approve: true } }, { tools: { defaultAction: 'invalid' } },
+    { intent: { semantic: { intents: {}, threshold: 1.1 } } },
+    { intent: { semantic: { intents: {}, threshold: NaN } } },
+  ]) {
+    calls.length = 0;
+    assert.throws(() => defineGuardConfig(invalid), /Invalid guard configuration/);
+    assert.throws(() => guard(invalid), /Invalid guard configuration/);
+    await assert.rejects(initGuard(invalid), /Invalid guard configuration/);
+    const ai = (await import('genkit')).genkit({});
+    const model = ai.defineModel({ name: 'test/invalid-config' }, async () => assert.fail('Provider executed'));
+    await assert.rejects(async () => ai.generate({ model, prompt: 'Help', use: [guardMiddleware(invalid)] }));
+    assert.deepEqual(calls, [], 'Invalid configuration loaded a guard model');
+  }
   await initGuard();
   assert.deepEqual(calls.splice(0), [['getExtractor', 'Xenova/all-MiniLM-L6-v2'], ['getPIIClassifier', 'openai/privacy-filter']]);
   const defaultDetection = await detectPII('alice@example.com');
