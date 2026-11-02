@@ -1,13 +1,13 @@
 {
-  "runId": "296002d5-4732-4668-a333-67e76cef6787",
-  "timestamp": "2026-10-10T11:54:55.745Z",
+  "runId": "c7d6333e-39b8-40e7-9ae3-44b40e8d4fd8",
+  "timestamp": "2026-11-02T10:31:46.254Z",
   "node": "v22.22.1",
-  "packageVersion": "0.2.0",
+  "packageVersion": "1.0.0-rc.1",
   "genkitVersion": "1.42.0",
   "redisVersion": "8.10.2",
   "artifact": {
-    "resolved": "file:vendor/intflows-genkit-guard-0.2.0.tgz",
-    "integrity": "sha512-ztHvMQNE5GEbyiYwIXRtMaQ45BKA5TxdYMASkRag6o82Oi/aaasQcPf0wtL50031sm3QN1+GfnI1TCDiONKkfA=="
+    "resolved": "file:vendor/intflows-genkit-guard-1.0.0-rc.1-6875d2a720a51a07f0e96d30c008c9bbcdee7b13.tgz",
+    "integrity": "sha512-Ze9Ar4ZHptZNUw/nFKBdvKb34RDTIMCXM5H61xN5oy8YIoxx/LoaFNj3YpnzFEkEX891T58xxgC/J+xHJ4Bb5g=="
   },
   "models": {
     "intent": "Xenova/all-MiniLM-L6-v2",
@@ -15,31 +15,31 @@
     "dtype": "q4"
   },
   "provider": "controlled Genkit model; no live Gemini calls",
-  "durationMs": 7701,
-  "peakRssMiB": 2068,
+  "durationMs": 9204,
+  "peakRssMiB": 2093,
   "passed": true,
-  "expectedCases": 5,
+  "expectedCases": 7,
   "results": [
     {
       "name": "legacy guard",
       "passed": true,
       "modelRequests": 3,
       "toolExecutions": 1,
-      "durationMs": 1317
+      "durationMs": 1501
     },
     {
       "name": "native guard with allow policy",
       "passed": true,
       "modelRequests": 3,
       "toolExecutions": 1,
-      "durationMs": 1403
+      "durationMs": 1559
     },
     {
       "name": "native guardMiddleware",
       "passed": true,
       "modelRequests": 3,
       "toolExecutions": 1,
-      "durationMs": 1390
+      "durationMs": 1475
     },
     {
       "name": "injection blocking",
@@ -48,6 +48,16 @@
     {
       "name": "real intent rejection",
       "passed": true
+    },
+    {
+      "name": "structured JSON restoration",
+      "passed": true,
+      "modelRequests": 1
+    },
+    {
+      "name": "streaming refusal",
+      "passed": true,
+      "modelRequests": 0
     }
   ]
 }

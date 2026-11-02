@@ -1,0 +1,46 @@
+{
+  "runId": "9f14c07d-ee75-4aec-ac6a-96f6da002037",
+  "candidate": "1.0.0-rc.1",
+  "accepted": true,
+  "gates": {
+    "candidate": true,
+    "workload": true,
+    "target": true,
+    "latency": true,
+    "correctness": true,
+    "coverage": true,
+    "retention": true,
+    "uninterrupted": true,
+    "memoryForRC": true
+  },
+  "status": "accepted-with-documented-memory-limitation",
+  "rawResult": {
+    "status": "failed",
+    "passed": false,
+    "memoryGate": false
+  },
+  "memoryDecision": {
+    "approvedBy": "User, 2026-11-02",
+    "scope": "This measured rc.1 run only; stability remains required before stable v1",
+    "baselineRss": 2358476800,
+    "finalRss": 3258224640
+  },
+  "budgetMs": 9000,
+  "concurrency": 10,
+  "artifact": {
+    "version": "1.0.0-rc.1",
+    "resolved": "file:vendor/intflows-genkit-guard-1.0.0-rc.1-062e6171862908bb5dcb35f26a856afbe4415d5f.tgz",
+    "integrity": "sha512-odmZEv8rzGgNigEVj/vCaV8hCDiDCrVrOiy2SuPJWkyY2Xbamzasu+GyjG3IdqiYIoER8+6z1vkdxqwRAjVv7A==",
+    "license": "Apache-2.0",
+    "dependencies": {
+      "@huggingface/transformers": "^4.3.0",
+      "zod": "^4.6.7"
+    },
+    "engines": {
+      "node": ">=22"
+    },
+    "peerDependencies": {
+      "genkit": "^1.42.0"
+    }
+  }
+}

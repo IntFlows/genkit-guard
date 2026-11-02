@@ -17,15 +17,18 @@ export type GuardConfig = {
   policyVersion?: string;
   tools?: ToolGuardConfig;
   intent?: {
-    mode?: string;
-    allowedIntent?: string;
+    /** @deprecated Semantic intent is the only supported mode; omit this setting. */
+    mode?: 'semantic';
+    /** Removed: list only allowed descriptions in semantic.intents. */
+    allowedIntent?: never;
     semantic?: {
       threshold?: number;
       intents: Record<string, string>;
     };
   };
   pii?: {
-    reversible?: boolean;
+    /** @deprecated Restoration is always enabled. false is rejected; omit this setting. */
+    reversible?: true;
     model?: string;
     mode?: 'ner' | 'classifier';
     fallback?: { model: string; mode?: 'ner' | 'classifier'; labelMappings?: PiiLabelMappings };
@@ -108,6 +111,12 @@ export function guard(config?: GuardConfig): NativeGuard | LegacyGuard {
 
 export const guardAction = guard;
 
+function requireNonStreaming(req: any, ctx: any) {
+  if (ctx?.onChunk || ctx?.streamingRequested || req?.streaming) {
+    throw new TypeError('Guard does not support streaming; use non-streaming generation');
+  }
+}
+
 function createGuardHooks(config?: GuardConfig) {
   validateGuardConfig(config);
   const logger = createLogger(config);
@@ -116,7 +125,15 @@ function createGuardHooks(config?: GuardConfig) {
     publishDecision(config, start, fields);
 
   return {
+    // Native generation can resume tool work before invoking its first model hook.
+    generate: async (envelope: any, ctx: any, next: any) => {
+      requireNonStreaming(envelope?.request, ctx);
+      return next(envelope, ctx);
+    },
     model: async (req: any, ctx: any, next: any) => {
+      // Chunk delivery bypasses final-response restoration and policy boundaries.
+      // Reject before inference, audit delivery, provider calls or tool execution.
+      requireNonStreaming(req, ctx);
       const started = performance.now();
       const input = getInputText(req);
 
@@ -220,6 +237,7 @@ function createGuardHooks(config?: GuardConfig) {
     },
 
     tool: async (req: any, ctx: any, next: any) => {
+      requireNonStreaming(req, ctx);
       const started = performance.now();
       const toolName = req?.toolRequest?.name;
       const stop = async (action: 'block' | 'approval-required', reasonCode: GuardDecision['reasonCode']): Promise<never> => {

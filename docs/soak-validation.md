@@ -13,4 +13,25 @@ A 30-minute pass is an initial validation, not evidence for the full RC. Before 
 
 ## Recorded results
 
-No real-model soak results have been recorded yet.
+The historical v0.3.0 run completed with failed stress/memory gates. The rc.1 concurrency-10 run completed with p95 7.89 seconds, zero errors and successful expiry. Its numeric memory check failed and remains recorded; the user accepted that specific measured footprint as an RC limitation. See [benchmarks](./benchmarks.md) and [RC acceptance](./validation/rc-2026-11-02/rc-acceptance.json). No 24-hour production acceptance has been recorded.
+
+## RC deployment acceptance revision — 2 November 2026
+
+The user selected **concurrency 10** and a **9,000 ms generation p95** limit for
+this RC deployment target. Concurrency 50 remains a failed, documented stress
+experiment; it is not a release acceptance target or a supported performance
+claim. This changes the latency/load target only: masking/restoration correctness,
+zero unexpected healthy-run errors, expiry and the original RSS limit remain.
+
+The fresh candidate runner is `scripts/soak-release.mjs` in the independent app:
+two full warm-up rounds at target concurrency, five minutes of representative
+loaded baseline, then 30 minutes at concurrency 10, followed by inactivity expiry.
+It records Redis connection/operation error classes and codes without payloads,
+and wall/monotonic clock skew; interrupted runs cannot pass. The short smoke
+variant verifies the harness but cannot establish a stable memory baseline.
+The 24-hour representative production workload remains required before stable v1.
+
+On 2 November 2026 the user accepted the reviewed rc.1 run's 2,249 -> 3,107 MiB
+median RSS as a documented RC limitation. The original relative-memory result
+remains failed; this is a specific release decision, not a blanket waiver for
+future regressions. Stable v1 still requires long-term memory validation.

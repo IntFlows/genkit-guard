@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-11-02T10:53:31.650726+00:00",
+  "passed": true,
+  "jsonReportsParsed": 19,
+  "documentationPagesChecked": [
+    "README.md",
+    "docs/api.md",
+    "docs/benchmarks.md",
+    "docs/compatibility.md",
+    "docs/independent-testing.md",
+    "docs/rc.1-readiness.md",
+    "docs/release-rc.1.md",
+    "docs/soak-validation.md",
+    "docs/wiki/1.-Home.md",
+    "docs/wiki/10.-Decision-Storage-and-Model-Fallback.md",
+    "docs/wiki/11.-Framework-Compatibility.md",
+    "docs/wiki/12.-Security-and-Operational-Errors.md",
+    "docs/wiki/13.-Benchmarks-and-Deployment-Sizing.md",
+    "docs/wiki/2.-Architecture.md",
+    "docs/wiki/3.-Getting-Started.md",
+    "docs/wiki/4.-Intent-Guard.md",
+    "docs/wiki/5.-PII-Guard.md",
+    "docs/wiki/6.-Full-Setup-Guide.md",
+    "docs/wiki/7.-Contributing.md",
+    "docs/wiki/8.-Shared-Model-Configuration.md",
+    "docs/wiki/9.-Tool-Controls-and-Logging.md",
+    "docs/wiki/README.md"
+  ],
+  "localLinksChecked": 94,
+  "runtimeFilesIdentical": true,
+  "finalSha256": "24d4acf14e96194b8f2fea723eabd61333133214b52dd6ad3e6963fc96d24f09",
+  "publicationPerformed": false
+}

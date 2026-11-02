@@ -71,12 +71,12 @@ const crossTurnMasked = await innerTurn.mask('owner@example.com', [
   { type: 'EMAIL', value: 'owner@example.com' },
 ]);
 
-ModelSingleton.getExtractor = async () => async () => ({ tolist: () => [] });
+ModelSingleton.getExtractor = async () => async () => ({ tolist: () => [[1, 0], [1, 0]] });
 ModelSingleton.getPIIClassifier = async () => async () => [];
 
 try {
   const middleware = guard({
-    intent: { semantic: { threshold: 0, intents: {} } },
+    intent: { semantic: { intents: { metadata: 'Fetch blob metadata' } } },
     pii: {
       mode: 'classifier',
       vault: { storage: crossTurnStorage, scopeId: 'outer-turn' },

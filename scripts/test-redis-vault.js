@@ -47,6 +47,7 @@ class RespRedisClient {
 
       socket.setTimeout(3000);
       socket.once('error', reject);
+      socket.once('close', () => reject(new Error('Redis connection closed before response')));
       socket.once('timeout', () => {
         socket.destroy();
         reject(new Error(`Timed out connecting to Redis at ${this.host}:${this.port}`));
@@ -146,6 +147,54 @@ try {
   assert.equal(await expiring.get('expiry', 'old'), undefined);
   assert.equal(await expiring.getByToken('old'), undefined);
   assert.equal(await expiring.getByToken('new'), 'new@example.com');
+  // Fault only this test's TCP proxy; never stop a shared Redis server.
+  let disconnected = false;
+  const sockets = new Set();
+  const proxy = net.createServer(socket => {
+    if (disconnected) { socket.destroy(); return; }
+    const upstream = net.createConnection({ host: redis.host, port: redis.port });
+    for (const connection of [socket, upstream]) {
+      sockets.add(connection);
+      connection.on('error', () => { socket.destroy(); upstream.destroy(); });
+      connection.once('close', () => sockets.delete(connection));
+    }
+    socket.pipe(upstream).pipe(socket);
+  });
+  await new Promise((resolve, reject) => {
+    proxy.once('error', reject);
+    proxy.listen(0, '127.0.0.1', resolve);
+  });
+  try {
+    const client = new RespRedisClient('127.0.0.1', proxy.address().port);
+    const outagePrefix = `${keyPrefix}:outage`;
+    for (const suffix of ['strict', 'fallback']) {
+      cleanupKeys.add(`${outagePrefix}:${suffix}:tokens`);
+      cleanupKeys.add(`${outagePrefix}:${suffix}:scope:session`);
+    }
+    const strict = createRedisPiiVaultStorage(client, { keyPrefix: `${outagePrefix}:strict`, ttlSeconds: 60 });
+    const fallback = createRedisPiiVaultStorage(client, { keyPrefix: `${outagePrefix}:fallback`, ttlSeconds: 60, fallbackToMemory: true });
+    await strict.set('session', 'before', 'before@example.com');
+    await fallback.set('session', 'before', 'before@example.com');
+    disconnected = true;
+    for (const socket of sockets) socket.destroy();
+    await assert.rejects(strict.get('session', 'before'));
+    await assert.rejects(strict.set('session', 'during', 'during@example.com'));
+    const tokenizer = new PiiTokenizer({ storage: strict, scopeId: 'session' });
+    await assert.rejects(tokenizer.unmask('anything'), { code: 'VAULT_UNAVAILABLE' });
+    assert.equal(await fallback.get('session', 'before'), 'before@example.com');
+    await fallback.set('session', 'during', 'during@example.com');
+    assert.equal(await fallback.get('session', 'during'), 'during@example.com');
+    disconnected = false;
+    assert.equal(await strict.get('session', 'before'), 'before@example.com');
+    assert.equal(await strict.get('session', 'during'), undefined);
+    assert.equal(await fallback.get('session', 'during'), undefined, 'Recovery must not replay memory-only writes');
+    await fallback.set('session', 'after', 'after@example.com');
+    assert.equal(await fallback.get('session', 'after'), 'after@example.com');
+    console.log('Live Redis disconnect/recovery passed: strict failure, fallback mirror, authoritative recovery, no replay.');
+  } finally {
+    for (const socket of sockets) socket.destroy();
+    await new Promise(resolve => proxy.close(resolve));
+  }
   console.log('Live Redis PII vault tests passed: isolation, cross-turn restoration, concurrent writes and expiry.');
 } finally {
   await Promise.all([...cleanupKeys].map((key) => redis.del(key)));

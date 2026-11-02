@@ -1,0 +1,96 @@
+{
+  "runId": "748d3abe-693e-4a04-8f66-df1dad8753fb",
+  "smoke": true,
+  "status": "failed",
+  "started": "2026-11-02T02:23:43.046Z",
+  "budgetMs": 9000,
+  "phaseMs": 10000,
+  "baselineMs": 5000,
+  "ttlSeconds": 15,
+  "concurrency": [
+    1,
+    2
+  ],
+  "provider": "controlled Genkit model; real local classifiers; no live Gemini calls",
+  "scope": "healthy Redis baseline only; operational failures and fallback require separate validation",
+  "hardware": {
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpu": "Intel(R) Core(TM) 7 240H",
+    "logicalCpus": 16,
+    "totalMemory": 16573423616
+  },
+  "node": "v22.22.1",
+  "phases": [
+    {
+      "concurrency": 1,
+      "completed": 5,
+      "errors": 0,
+      "uniqueScopes": 3,
+      "repeatedScopes": 2,
+      "durationMs": 11737.484187999999,
+      "conversationsPerSecond": 0.4259856643821364,
+      "latencyUnit": "ms per ai.generate call (initial call includes tool loop)",
+      "p50": 448.767,
+      "p95": 830.975,
+      "p99": 860.671
+    },
+    {
+      "concurrency": 2,
+      "completed": 6,
+      "errors": 0,
+      "uniqueScopes": 4,
+      "repeatedScopes": 2,
+      "durationMs": 12601.753109999998,
+      "conversationsPerSecond": 0.47612423030560397,
+      "latencyUnit": "ms per ai.generate call (initial call includes tool loop)",
+      "p50": 905.727,
+      "p95": 1598.463,
+      "p99": 1598.463
+    }
+  ],
+  "errors": [],
+  "redisDiagnostics": [
+    {
+      "timestamp": "2026-11-02T02:23:43.072Z",
+      "event": "ready",
+      "ready": true
+    }
+  ],
+  "maxClockSkewMs": 0.8549189999976079,
+  "acceptance": "Concurrency 10; p95 9000 ms, user decision 2026-11-02",
+  "memoryBaseline": "Two full workload rounds at target concurrency followed by five minutes of loaded baseline; original RSS limit unchanged",
+  "artifact": {
+    "version": "1.0.0-rc.1",
+    "resolved": "file:vendor/intflows-genkit-guard-1.0.0-rc.1.tgz",
+    "integrity": "sha512-ZOZRzXN+yza2L1jgbGoHmCTpdHtTysn/wMX+sL2U6Eezm6/ucb04nWHw2Q+jFJrOJ0Hc0F+/ZhdIUDbzkyja3g==",
+    "license": "Apache-2.0",
+    "dependencies": {
+      "@huggingface/transformers": "^4.3.0",
+      "zod": "^4.6.7"
+    },
+    "engines": {
+      "node": ">=22"
+    },
+    "peerDependencies": {
+      "genkit": "^1.42.0"
+    }
+  },
+  "packageVersion": "1.0.0-rc.1",
+  "genkitVersion": "1.42.0",
+  "tarballSha256": "d8e1d1434ddfc181909de85b3e62c455505776c5bcdf53bbfe440dbbd0a9e5c0",
+  "models": {
+    "intent": "Xenova/all-MiniLM-L6-v2",
+    "pii": "openai/privacy-filter",
+    "dtype": "q4"
+  },
+  "redisVersion": "8.10.2",
+  "redisPersistence": "# Persistence\r\nloading:0\r\nasync_loading:0\r\ncurrent_cow_peak:0\r\ncurrent_cow_size:0\r\ncurrent_cow_size_age:0\r\ncurrent_fork_perc:0.00\r\ncurrent_save_keys_processed:0\r\ncurrent_save_keys_total:0\r\nrdb_changes_since_last_save:142\r\nrdb_bgsave_in_progress:0\r\nrdb_last_save_time:1793586158\r\nrdb_last_bgsave_status:ok\r\nrdb_last_bgsave_time_sec:0\r\nrdb_current_bgsave_time_sec:-1\r\nrdb_saves:1\r\nrdb_saves_consecutive_failures:0\r\nrdb_last_cow_size:319488\r\nrdb_last_load_keys_expired:0\r\nrdb_last_load_keys_loaded:0\r\naof_enabled:0\r\naof_rewrite_in_progress:0\r\naof_rewrite_scheduled:0\r\naof_last_rewrite_time_sec:-1\r\naof_current_rewrite_time_sec:-1\r\naof_last_bgrewrite_status:ok\r\naof_rewrites:0\r\naof_rewrites_consecutive_failures:0\r\naof_last_write_status:ok\r\naof_last_cow_size:0\r\nbackup_in_progress:0\r\nmodule_fork_in_progress:0\r\nmodule_fork_last_cow_size:0\r\n",
+  "baselineP95Ms": 1628.159,
+  "expired": true,
+  "baselineRss": 2133630976,
+  "finalRss": 2807775232,
+  "memoryGate": false,
+  "passed": false,
+  "finished": "2026-11-02T02:24:44.775Z"
+}
