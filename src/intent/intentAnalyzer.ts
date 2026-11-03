@@ -73,9 +73,11 @@ export async function analyzeIntentStructured(
   const extractor = await ModelSingleton.getExtractor(model);
 
   let bestIntent = '';
-  let bestScore = 0;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  const descriptions = Object.entries(intents);
+  if (descriptions.length === 0) return { intent: '', score: 0, allowed: false };
 
-  for (const [key, desc] of Object.entries(intents)) {
+  for (const [key, desc] of descriptions) {
     const output = await extractor(
       [`intent: ${desc}`, `intent: ${input}`],
       { pooling: 'mean', normalize: true }
@@ -86,6 +88,7 @@ export async function analyzeIntentStructured(
 
     const finalScore =
       typeof score === 'number' ? score : (score as any).data[0];
+    if (!Number.isFinite(finalScore)) throw new Error('Invalid intent similarity');
 
     if (finalScore > bestScore) {
       bestScore = finalScore;

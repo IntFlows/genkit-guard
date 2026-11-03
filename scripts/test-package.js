@@ -23,6 +23,11 @@ try {
   }
   assert.ok(!files.some(file => /^(src|example|node_modules)\/|^scripts\/test-|publish-wiki/.test(file)),
     'Package contains development files');
+  assert.deepEqual(files.filter(file => file.startsWith('scripts/')), ['scripts/download-model.js'],
+    'Only the runtime model downloader may ship from scripts/');
+  const publicFiles = new Set(['README.md', 'package.json', 'LICENSE', 'scripts/download-model.js']);
+  assert.ok(files.every(file => file.startsWith('dist/') || publicFiles.has(file)),
+    'Package contains files outside the runtime allowlist');
   const genkitVersion = JSON.parse(await readFile(path.join(root, 'node_modules/genkit/package.json'), 'utf8')).version;
   const typescriptVersion = JSON.parse(await readFile(path.join(root, 'node_modules/typescript/package.json'), 'utf8')).version;
   await writeFile(path.join(temporary, 'package.json'), JSON.stringify({ private: true, type: 'module' }));

@@ -1,0 +1,200 @@
+{
+  "runId": "2d955470-42ee-4b16-aa50-07d8dc4d6a83",
+  "smoke": false,
+  "status": "failed",
+  "started": "2026-10-31T01:42:01.226Z",
+  "budgetMs": 5000,
+  "phaseMs": 1800000,
+  "baselineMs": 300000,
+  "ttlSeconds": 120,
+  "concurrency": [
+    1,
+    10,
+    50
+  ],
+  "provider": "controlled Genkit model; real local classifiers; no live Gemini calls",
+  "scope": "healthy Redis baseline only; operational failures and fallback require separate validation",
+  "hardware": {
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpu": "Intel(R) Core(TM) 7 240H",
+    "logicalCpus": 16,
+    "totalMemory": 16573427712
+  },
+  "node": "v22.22.1",
+  "phases": [
+    {
+      "concurrency": 1,
+      "completed": 731,
+      "errors": 0,
+      "uniqueScopes": 366,
+      "repeatedScopes": 365,
+      "durationMs": 1806943.925582,
+      "conversationsPerSecond": 0.40455046205407375,
+      "latencyUnit": "ms per ai.generate call (initial call includes tool loop)",
+      "p50": 524.031,
+      "p95": 997.375,
+      "p99": 1154.047
+    },
+    {
+      "concurrency": 10,
+      "completed": 747,
+      "errors": 0,
+      "uniqueScopes": 376,
+      "repeatedScopes": 371,
+      "durationMs": 1808419.0533369998,
+      "conversationsPerSecond": 0.41306797703861403,
+      "latencyUnit": "ms per ai.generate call (initial call includes tool loop)",
+      "p50": 5836.799,
+      "p95": 8413.183,
+      "p99": 13754.367
+    },
+    {
+      "concurrency": 50,
+      "completed": 272,
+      "errors": 50,
+      "uniqueScopes": 143,
+      "repeatedScopes": 129,
+      "durationMs": 863481.6968980003,
+      "conversationsPerSecond": 0.3150037817560484,
+      "latencyUnit": "ms per ai.generate call (initial call includes tool loop)",
+      "p50": 17170.431,
+      "p95": 28278.783,
+      "p99": 43122.687
+    }
+  ],
+  "errors": [
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    },
+    {
+      "phase": "concurrency-50",
+      "message": "Guard PII vault operation failed",
+      "stack": "GuardOperationalError: Guard PII vault operation failed\n    at guardOperation (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/core/errors.js:15:15)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at listOnTimeout (node:internal/timers:547:9)\n    at process.processTimers (node:internal/timers:521:7)\n    at async PiiTokenizer.importTokens (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/pii/tokenizer.js:67:27)\n    at async Object.model (file:///home/heman/code/genkit-guard-test-app/node_modules/@intflows/genkit-guard/dist/middleware/middleware.js:97:13)\n    at async generateActionTurn (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:315:25)\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/ai/lib/generate/action.mjs:89:22\n    at async file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:64:24\n    at async runInNewSpan (file:///home/heman/code/genkit-guard-test-app/node_modules/@genkit-ai/core/lib/tracing/instrumentation.mjs:36:10)"
+    }
+  ],
+  "artifact": {
+    "version": "0.3.0",
+    "resolved": "file:vendor/intflows-genkit-guard-0.3.0.tgz",
+    "integrity": "sha512-4ydEYZm3WJ2UHB/Sxi0rzO4aeEd1zKgm1zDDPKxPbfjQZ3ZhFTimpkxa7CtPwVJ1PHkZSaRVEZlg6pcTGgyU3Q==",
+    "license": "Apache-2.0",
+    "dependencies": {
+      "@huggingface/transformers": "^4.3.0",
+      "zod": "^4.4.3"
+    },
+    "engines": {
+      "node": ">=22"
+    },
+    "peerDependencies": {
+      "genkit": "^1.42.0"
+    }
+  },
+  "packageVersion": "0.3.0",
+  "genkitVersion": "1.42.0",
+  "tarballSha256": "b0d6a132455012dc7c6907ea449c49d9311f92a3dca7222e00d52736209eea3a",
+  "models": {
+    "intent": "Xenova/all-MiniLM-L6-v2",
+    "pii": "openai/privacy-filter",
+    "dtype": "q4"
+  },
+  "redisVersion": "8.10.2",
+  "redisPersistence": "# Persistence\r\nloading:0\r\nasync_loading:0\r\ncurrent_cow_peak:0\r\ncurrent_cow_size:0\r\ncurrent_cow_size_age:0\r\ncurrent_fork_perc:0.00\r\ncurrent_save_keys_processed:0\r\ncurrent_save_keys_total:0\r\nrdb_changes_since_last_save:0\r\nrdb_bgsave_in_progress:0\r\nrdb_last_save_time:1793409402\r\nrdb_last_bgsave_status:ok\r\nrdb_last_bgsave_time_sec:0\r\nrdb_current_bgsave_time_sec:-1\r\nrdb_saves:7\r\nrdb_saves_consecutive_failures:0\r\nrdb_last_cow_size:311296\r\nrdb_last_load_keys_expired:2\r\nrdb_last_load_keys_loaded:0\r\naof_enabled:0\r\naof_rewrite_in_progress:0\r\naof_rewrite_scheduled:0\r\naof_last_rewrite_time_sec:-1\r\naof_current_rewrite_time_sec:-1\r\naof_last_bgrewrite_status:ok\r\naof_rewrites:0\r\naof_rewrites_consecutive_failures:0\r\naof_last_write_status:ok\r\naof_last_cow_size:0\r\nbackup_in_progress:0\r\nmodule_fork_in_progress:0\r\nmodule_fork_last_cow_size:0\r\n",
+  "expired": true,
+  "baselineRss": 1995792384,
+  "finalRss": 2612609024,
+  "memoryGate": false,
+  "passed": false,
+  "finished": "2026-10-31T05:07:15.322Z"
+}

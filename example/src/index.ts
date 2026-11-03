@@ -75,7 +75,6 @@ export const integrationFlow = ai.defineFlow(
         guard({
           intent: {
             mode: "semantic",
-            allowedIntent: "integration_question",
             semantic: {
               threshold: 0.2,
               intents: {

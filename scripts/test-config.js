@@ -13,6 +13,8 @@ for (const method of ['getExtractor', 'getNER', 'getPIIClassifier']) {
 }
 try {
   for (const invalid of [
+    { pii: { reversible: false } }, { intent: { mode: 'keyword' } },
+    { intent: { allowedIntent: 'support' } },
     { pii: { mode: 'unknown' } }, { pii: { model: '' } },
     { pii: { labelMappings: { PER: 'bad-type' } } },
     { pii: { vault: { storage: {}, scopeId: 123 } } },

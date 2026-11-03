@@ -22,7 +22,7 @@
     "huggingface"
   ],
   "license": "Apache-2.0",
-  "version": "0.3.0",
+  "version": "1.0.0-rc.1",
   "type": "module",
   "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -44,16 +44,20 @@
     "test:redis": "npm run build && node scripts/test-redis-vault.js",
     "prepublishOnly": "npm run build",
     "test:independent": "node scripts/test-independent-app.js",
+    "test:independent:isolated": "node scripts/test-independent-isolated.js",
+    "test:compatibility": "node scripts/test-compatibility-isolated.js",
+    "audit:release": "node scripts/audit-release.js",
+    "test:rc": "npm run build && node --test scripts/test-rc.js",
     "test:package": "npm run build && node scripts/test-package.js",
     "test:config": "npm run build && node scripts/test-config.js",
     "wiki:publish": "node scripts/publish-wiki.js",
     "test:release1": "npm run build && node --test scripts/test-release1.js scripts/test-publish-wiki.js",
     "test:release2": "npm run build && node --test scripts/test-release2.js",
-    "test:release3": "npm run build && node --test scripts/test-release3.js scripts/test-signatures.js"
+    "test:release3": "npm run build && node --test scripts/test-release3.js scripts/test-signatures.js scripts/test-rc.js scripts/test-audit-policy.js"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "peerDependencies": {
     "genkit": "^1.42.0"

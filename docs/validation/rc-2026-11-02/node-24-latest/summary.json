@@ -1,0 +1,96 @@
+{
+  "timestamp": "2026-11-02T02:37:27.834Z",
+  "node": "v24.22.2",
+  "mode": "latest",
+  "target": "^1.42.0",
+  "temporary": "/tmp/guard-compatibility-xuwLkp",
+  "source": {
+    "commit": "45d226fae412eb6b8b57e352570f0e1d997a1e25",
+    "dirty": true,
+    "sourceSha256": "fb33a6104e743e6c5742ef56debd05c36adca6cab037b4f047f229ad5afc1f53",
+    "sourceFiles": [
+      ".github/workflows/compatibility.yml",
+      "package-lock.json",
+      "package.json",
+      "scripts/audit-policy.js",
+      "scripts/audit-release.js",
+      "scripts/download-model.js",
+      "scripts/publish-wiki.js",
+      "scripts/test-audit-policy.js",
+      "scripts/test-compatibility-isolated.js",
+      "scripts/test-concurrent-vault.js",
+      "scripts/test-config.js",
+      "scripts/test-independent-app.js",
+      "scripts/test-independent-isolated.js",
+      "scripts/test-package.js",
+      "scripts/test-privacy-filter.js",
+      "scripts/test-publish-wiki.js",
+      "scripts/test-rc.js",
+      "scripts/test-redis-vault.js",
+      "scripts/test-release1.js",
+      "scripts/test-release2.js",
+      "scripts/test-release3.js",
+      "scripts/test-signatures.js",
+      "scripts/test-storage.js",
+      "scripts/test-types.ts",
+      "scripts/validation-provenance.js",
+      "src/core/audit.ts",
+      "src/core/config.ts",
+      "src/core/decision-storage.ts",
+      "src/core/decision.ts",
+      "src/core/errors.ts",
+      "src/core/types.ts",
+      "src/guard.config.ts",
+      "src/index.ts",
+      "src/intent/intentAnalyzer.ts",
+      "src/middleware/content.ts",
+      "src/middleware/middleware.ts",
+      "src/pii/detector.ts",
+      "src/pii/storage.ts",
+      "src/pii/tokenizer.ts",
+      "src/util/fallback.ts",
+      "src/util/singleton.ts",
+      "tsconfig.json"
+    ]
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "ci",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "npm",
+        "install",
+        "--no-save",
+        "--package-lock=false",
+        "--no-audit",
+        "--no-fund",
+        "genkit@^1.42.0"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:package"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "genkit": "1.43.0",
+  "passed": true
+}

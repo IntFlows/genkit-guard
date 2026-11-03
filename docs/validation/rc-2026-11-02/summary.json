@@ -1,0 +1,130 @@
+{
+  "version": "1.0.0-rc.1",
+  "generatedAt": "2026-11-02T10:38:41.7599421+00:00",
+  "status": "locally-validated-with-documented-memory-limitation",
+  "published": false,
+  "tagCreated": false,
+  "finalArchive": "\\\\wsl.localhost\\Ubuntu-26.04\\home\\heman\\code\\genkit-guard-test-app\\",
+  "finalIntegrity": "sha512-Ze9Ar4ZHptZNUw/nFKBdvKb34RDTIMCXM5H61xN5oy8YIoxx/LoaFNj3YpnzFEkEX891T58xxgC/J+xHJ4Bb5g==",
+  "finalSha256": null,
+  "runtimeFilesIdenticalToMeasuredArchive": true,
+  "archiveDifferences": [
+    "package/README.md"
+  ],
+  "localCompatibility": [
+    {
+      "node": "v22.22.1",
+      "target": "minimum",
+      "genkit": "1.42.0",
+      "passed": true
+    },
+    {
+      "node": "v22.22.1",
+      "target": "latest",
+      "genkit": "1.43.0",
+      "passed": true
+    },
+    {
+      "node": "v24.22.2",
+      "target": "minimum",
+      "genkit": "1.42.0",
+      "passed": true
+    },
+    {
+      "node": "v24.22.2",
+      "target": "latest",
+      "genkit": "1.43.0",
+      "passed": true
+    }
+  ],
+  "independent": {
+    "passed": true,
+    "cases": 7,
+    "packageVersion": "1.0.0-rc.1",
+    "genkitVersion": "1.42.0"
+  },
+  "soak": {
+    "runId": "9f14c07d-ee75-4aec-ac6a-96f6da002037",
+    "candidate": "1.0.0-rc.1",
+    "accepted": true,
+    "gates": {
+      "candidate": true,
+      "workload": true,
+      "target": true,
+      "latency": true,
+      "correctness": true,
+      "coverage": true,
+      "retention": true,
+      "uninterrupted": true,
+      "memoryForRC": true
+    },
+    "status": "accepted-with-documented-memory-limitation",
+    "rawResult": {
+      "status": "failed",
+      "passed": false,
+      "memoryGate": false
+    },
+    "memoryDecision": {
+      "approvedBy": "User, 2026-11-02",
+      "scope": "This measured rc.1 run only; stability remains required before stable v1",
+      "baselineRss": 2358476800,
+      "finalRss": 3258224640
+    },
+    "budgetMs": 9000,
+    "concurrency": 10,
+    "artifact": {
+      "version": "1.0.0-rc.1",
+      "resolved": "file:vendor/intflows-genkit-guard-1.0.0-rc.1-062e6171862908bb5dcb35f26a856afbe4415d5f.tgz",
+      "integrity": "sha512-odmZEv8rzGgNigEVj/vCaV8hCDiDCrVrOiy2SuPJWkyY2Xbamzasu+GyjG3IdqiYIoER8+6z1vkdxqwRAjVv7A==",
+      "license": "Apache-2.0",
+      "dependencies": {
+        "@huggingface/transformers": "^4.3.0",
+        "zod": "^4.6.7"
+      },
+      "engines": {
+        "node": ">=22"
+      },
+      "peerDependencies": {
+        "genkit": "^1.42.0"
+      }
+    }
+  },
+  "audit": {
+    "policyPassed": true,
+    "blockingFindings": 0,
+    "inheritedGenkitFindings": 65,
+    "graphs": {
+      "full": {
+        "exitCode": 1,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 59,
+          "high": 6,
+          "critical": 0,
+          "total": 65
+        }
+      },
+      "runtime": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      }
+    }
+  },
+  "publication": {
+    "dryRunPassed": true,
+    "distTag": "rc",
+    "access": "public",
+    "remoteCandidateCI": "not-verified; changes not pushed",
+    "gitPushAuthentication": "required; non-interactive dry run could not obtain username",
+    "githubCliAuthentication": "HTTP 401",
+    "npmAuthentication": "HTTP 401 from npm whoami"
+  }
+}

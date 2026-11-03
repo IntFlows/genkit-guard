@@ -67,3 +67,11 @@ const operationalCode: 'AUDIT_UNAVAILABLE' | 'VAULT_UNAVAILABLE' = new GuardOper
 const ai = genkit({});
 void ai.generate({ prompt: 'Help', use: [guard(release1)] });
 void ai.generate({ prompt: 'Help', use: [guardMiddleware(shared)] });
+
+// The RC contract rejects settings that previously implied unsupported behavior.
+// @ts-expect-error Restoration cannot be disabled.
+guard({ pii: { reversible: false } });
+// @ts-expect-error Restrict allowed descriptions via semantic.intents.
+guard({ intent: { allowedIntent: 'support' } });
+// @ts-expect-error Only semantic intent mode exists.
+guard({ intent: { mode: 'keyword' } });

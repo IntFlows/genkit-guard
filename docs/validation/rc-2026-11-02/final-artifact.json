@@ -1,0 +1,194 @@
+{
+  "id": "@intflows/genkit-guard@1.0.0-rc.1",
+  "name": "@intflows/genkit-guard",
+  "version": "1.0.0-rc.1",
+  "size": 30694,
+  "unpackedSize": 103669,
+  "shasum": "6875d2a720a51a07f0e96d30c008c9bbcdee7b13",
+  "integrity": "sha512-Ze9Ar4ZHptZNUw/nFKBdvKb34RDTIMCXM5H61xN5oy8YIoxx/LoaFNj3YpnzFEkEX891T58xxgC/J+xHJ4Bb5g==",
+  "filename": "intflows-genkit-guard-1.0.0-rc.1.tgz",
+  "files": [
+    {
+      "path": "LICENSE",
+      "size": 11357,
+      "mode": 420
+    },
+    {
+      "path": "README.md",
+      "size": 20583,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/audit.d.ts",
+      "size": 324,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/audit.js",
+      "size": 1452,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/config.d.ts",
+      "size": 312,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/config.js",
+      "size": 2653,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/decision-storage.d.ts",
+      "size": 1973,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/decision-storage.js",
+      "size": 3640,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/decision.d.ts",
+      "size": 1621,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/decision.js",
+      "size": 316,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/errors.d.ts",
+      "size": 385,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/errors.js",
+      "size": 517,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/types.d.ts",
+      "size": 382,
+      "mode": 420
+    },
+    {
+      "path": "dist/core/types.js",
+      "size": 11,
+      "mode": 420
+    },
+    {
+      "path": "dist/guard.config.d.ts",
+      "size": 515,
+      "mode": 420
+    },
+    {
+      "path": "dist/guard.config.js",
+      "size": 550,
+      "mode": 420
+    },
+    {
+      "path": "dist/index.d.ts",
+      "size": 1158,
+      "mode": 420
+    },
+    {
+      "path": "dist/index.js",
+      "size": 2335,
+      "mode": 420
+    },
+    {
+      "path": "dist/intent/intentAnalyzer.d.ts",
+      "size": 285,
+      "mode": 420
+    },
+    {
+      "path": "dist/intent/intentAnalyzer.js",
+      "size": 2721,
+      "mode": 420
+    },
+    {
+      "path": "dist/middleware/content.d.ts",
+      "size": 264,
+      "mode": 420
+    },
+    {
+      "path": "dist/middleware/content.js",
+      "size": 2455,
+      "mode": 420
+    },
+    {
+      "path": "dist/middleware/middleware.d.ts",
+      "size": 2889,
+      "mode": 420
+    },
+    {
+      "path": "dist/middleware/middleware.js",
+      "size": 17180,
+      "mode": 420
+    },
+    {
+      "path": "dist/pii/detector.d.ts",
+      "size": 736,
+      "mode": 420
+    },
+    {
+      "path": "dist/pii/detector.js",
+      "size": 5613,
+      "mode": 420
+    },
+    {
+      "path": "dist/pii/storage.d.ts",
+      "size": 2454,
+      "mode": 420
+    },
+    {
+      "path": "dist/pii/storage.js",
+      "size": 6048,
+      "mode": 420
+    },
+    {
+      "path": "dist/pii/tokenizer.d.ts",
+      "size": 767,
+      "mode": 420
+    },
+    {
+      "path": "dist/pii/tokenizer.js",
+      "size": 3354,
+      "mode": 420
+    },
+    {
+      "path": "dist/util/fallback.d.ts",
+      "size": 488,
+      "mode": 420
+    },
+    {
+      "path": "dist/util/fallback.js",
+      "size": 1188,
+      "mode": 420
+    },
+    {
+      "path": "dist/util/singleton.d.ts",
+      "size": 541,
+      "mode": 420
+    },
+    {
+      "path": "dist/util/singleton.js",
+      "size": 2970,
+      "mode": 420
+    },
+    {
+      "path": "package.json",
+      "size": 2755,
+      "mode": 420
+    },
+    {
+      "path": "scripts/download-model.js",
+      "size": 877,
+      "mode": 420
+    }
+  ],
+  "entryCount": 36,
+  "bundled": []
+}

@@ -16,15 +16,15 @@ export const guardConfigSchema: z.ZodType<GuardConfig> = z.object({
     approve: callbackSchema.optional(),
   }).optional(),
   intent: z.object({
-    mode: z.string().optional(),
-    allowedIntent: z.string().optional(),
+    mode: z.literal('semantic').optional(),
+    allowedIntent: z.never().optional(),
     semantic: z.object({
       threshold: z.number().finite().min(-1).max(1).optional(),
       intents: z.record(z.string(), z.string()),
     }).optional(),
   }).optional(),
   pii: z.object({
-    reversible: z.boolean().optional(),
+    reversible: z.literal(true).optional(),
     model: z.string().min(1).optional(),
     mode: z.enum(['ner', 'classifier']).optional(),
     fallback: z.object({

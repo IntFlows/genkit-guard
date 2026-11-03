@@ -1,0 +1,624 @@
+{
+  "timestamp": "2026-11-02T02:38:35.937Z",
+  "node": "v22.22.1",
+  "source": {
+    "commit": "45d226fae412eb6b8b57e352570f0e1d997a1e25",
+    "dirty": true,
+    "sourceSha256": "fb33a6104e743e6c5742ef56debd05c36adca6cab037b4f047f229ad5afc1f53",
+    "sourceFiles": [
+      ".github/workflows/compatibility.yml",
+      "package-lock.json",
+      "package.json",
+      "scripts/audit-policy.js",
+      "scripts/audit-release.js",
+      "scripts/download-model.js",
+      "scripts/publish-wiki.js",
+      "scripts/test-audit-policy.js",
+      "scripts/test-compatibility-isolated.js",
+      "scripts/test-concurrent-vault.js",
+      "scripts/test-config.js",
+      "scripts/test-independent-app.js",
+      "scripts/test-independent-isolated.js",
+      "scripts/test-package.js",
+      "scripts/test-privacy-filter.js",
+      "scripts/test-publish-wiki.js",
+      "scripts/test-rc.js",
+      "scripts/test-redis-vault.js",
+      "scripts/test-release1.js",
+      "scripts/test-release2.js",
+      "scripts/test-release3.js",
+      "scripts/test-signatures.js",
+      "scripts/test-storage.js",
+      "scripts/test-types.ts",
+      "scripts/validation-provenance.js",
+      "src/core/audit.ts",
+      "src/core/config.ts",
+      "src/core/decision-storage.ts",
+      "src/core/decision.ts",
+      "src/core/errors.ts",
+      "src/core/types.ts",
+      "src/guard.config.ts",
+      "src/index.ts",
+      "src/intent/intentAnalyzer.ts",
+      "src/middleware/content.ts",
+      "src/middleware/middleware.ts",
+      "src/pii/detector.ts",
+      "src/pii/storage.ts",
+      "src/pii/tokenizer.ts",
+      "src/util/fallback.ts",
+      "src/util/singleton.ts",
+      "tsconfig.json"
+    ]
+  },
+  "lockSha256": "d0a516c42a0326cb42022c1e5ca4c35ea869c5b2dee9de32ecce0f45d6d388a7",
+  "results": {
+    "full": {
+      "exitCode": 1,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 59,
+        "high": 6,
+        "critical": 0,
+        "total": 65
+      }
+    },
+    "runtime": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    }
+  },
+  "policy": {
+    "policy": "Track accepted Genkit-only paths separately; direct/shared library and unclassified findings block",
+    "acceptedBy": "User release-policy decision, 2026-11-02",
+    "blocking": [],
+    "inheritedGenkit": [
+      {
+        "graph": "full",
+        "name": "@genkit-ai/ai",
+        "severity": "high",
+        "nodes": [
+          "node_modules/@genkit-ai/ai"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@genkit-ai/core",
+        "severity": "high",
+        "nodes": [
+          "node_modules/@genkit-ai/core"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@genkit-ai/firebase",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@genkit-ai/firebase"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@genkit-ai/google-cloud",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@genkit-ai/google-cloud"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@google-cloud/firestore"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@google-cloud/opentelemetry-cloud-monitoring-exporter",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@google-cloud/opentelemetry-cloud-monitoring-exporter"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@google-cloud/opentelemetry-cloud-trace-exporter",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@google-cloud/opentelemetry-cloud-trace-exporter"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@google-cloud/opentelemetry-resource-util",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@google-cloud/opentelemetry-resource-util"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/auto-instrumentations-node",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/auto-instrumentations-node"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/core",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/core",
+          "node_modules/@opentelemetry/resource-detector-alibaba-cloud/node_modules/@opentelemetry/core",
+          "node_modules/@opentelemetry/resource-detector-container/node_modules/@opentelemetry/core"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/exporter-trace-otlp-grpc",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/exporter-trace-otlp-grpc"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/exporter-trace-otlp-http",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/exporter-trace-otlp-http"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/exporter-trace-otlp-proto",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/exporter-trace-otlp-proto"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/exporter-zipkin",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/exporter-zipkin"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-amqplib",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-amqplib"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-aws-lambda",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-aws-lambda"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-aws-sdk",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-aws-sdk"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-cassandra-driver",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-cassandra-driver"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-connect",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-connect"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-express",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-express"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-fastify",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-fastify"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-fs",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-fs"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-hapi",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-hapi"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-http",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-http"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-knex",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-knex"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-koa",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-koa"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-mongodb",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-mongodb"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-mongoose",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-mongoose"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-mysql",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-mysql"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-mysql2",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-mysql2"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-pg",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-pg"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-pino",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-pino"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-restify",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-restify"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-tedious",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-tedious"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/instrumentation-undici",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/instrumentation-undici"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/otlp-exporter-base",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/otlp-exporter-base"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/otlp-grpc-exporter-base",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/otlp-grpc-exporter-base"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/otlp-transformer",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/otlp-transformer"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/propagator-b3",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/propagator-b3"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/propagator-jaeger",
+        "severity": "high",
+        "nodes": [
+          "node_modules/@opentelemetry/propagator-jaeger"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/resource-detector-alibaba-cloud",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/resource-detector-alibaba-cloud"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/resource-detector-aws",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/resource-detector-aws"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/resource-detector-azure",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/resource-detector-azure"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/resource-detector-container",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/resource-detector-container"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/resource-detector-gcp",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/resource-detector-gcp"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/resources",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/resources"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/sdk-logs",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/sdk-logs"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/sdk-metrics",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/sdk-metrics"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/sdk-node",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/sdk-node"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/sdk-trace-base",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/sdk-trace-base"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/sdk-trace-node",
+        "severity": "high",
+        "nodes": [
+          "node_modules/@opentelemetry/sdk-trace-node"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "@opentelemetry/sql-common",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@opentelemetry/sql-common"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "gaxios",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@google-cloud/firestore-api/node_modules/gaxios",
+          "node_modules/@google-cloud/logging-api/node_modules/gaxios",
+          "node_modules/@google-cloud/modelarmor/node_modules/gaxios",
+          "node_modules/gcp-metadata/node_modules/gaxios",
+          "node_modules/google-auth-library/node_modules/gaxios",
+          "node_modules/googleapis-common/node_modules/gaxios",
+          "node_modules/gtoken/node_modules/gaxios"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "gcp-metadata",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@google-cloud/firestore-api/node_modules/gcp-metadata",
+          "node_modules/@google-cloud/logging-api/node_modules/gcp-metadata",
+          "node_modules/@google-cloud/modelarmor/node_modules/gcp-metadata"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "genkit",
+        "severity": "high",
+        "nodes": [
+          "node_modules/genkit"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "glob",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/glob"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "google-gax",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/@google-cloud/firestore-api/node_modules/google-gax",
+          "node_modules/@google-cloud/logging-api/node_modules/google-gax",
+          "node_modules/@google-cloud/modelarmor/node_modules/google-gax",
+          "node_modules/google-gax"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "googleapis",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/googleapis"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "googleapis-common",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/googleapis-common"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "minimatch",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/minimatch"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "retry-request",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/google-gax/node_modules/retry-request"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "rimraf",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/rimraf"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "teeny-request",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/google-gax/node_modules/teeny-request"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "uuid",
+        "severity": "moderate",
+        "nodes": [
+          "node_modules/gcp-metadata/node_modules/uuid",
+          "node_modules/google-auth-library/node_modules/uuid",
+          "node_modules/google-gax/node_modules/uuid",
+          "node_modules/googleapis-common/node_modules/uuid",
+          "node_modules/gtoken/node_modules/uuid",
+          "node_modules/uuid"
+        ]
+      },
+      {
+        "graph": "full",
+        "name": "zod",
+        "severity": "high",
+        "nodes": [
+          "node_modules/@genkit-ai/core/node_modules/zod"
+        ]
+      }
+    ],
+    "passed": true
+  }
+}

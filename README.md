@@ -19,7 +19,7 @@ Detection is based on patterns and model predictions. It can miss attacks or PII
 
 ## Full setup guide
 
-The following setup targets **v0.2.0**. Install Genkit and its provider plugin without a version pin; see the [compatibility matrix](./docs/compatibility.md) for tested integration paths.
+The following setup targets **v1.0.0-rc.1**, published on npm as a release candidate. Install it explicitly with compatible Genkit 1.x dependencies; see the [compatibility matrix](./docs/compatibility.md) for tested integration paths.
 
 ### 1. Create the application and install dependencies
 
@@ -28,7 +28,7 @@ mkdir my-genkit-app
 cd my-genkit-app
 npm init -y
 npm pkg set type=module
-npm install genkit @genkit-ai/google-genai @intflows/genkit-guard
+npm install "genkit@^1.42.0" "@genkit-ai/google-genai@^1.42.0" "@intflows/genkit-guard@1.0.0-rc.1"
 npm install -D typescript tsx @types/node
 mkdir src
 ```
@@ -340,9 +340,17 @@ Without fallback configuration, model failures also stop execution with sanitize
 
 ## Operational errors
 
+Use non-streaming generation. Guard rejects `generateStream` and `generate({ onChunk })` with TypeError before provider execution because chunk withholding/restoration is not implemented.
+
+For the RC contract, remove `intent.allowedIntent` and list only allowed descriptions in `intent.semantic.intents`. Omit deprecated `intent.mode` (only `"semantic"` is accepted) and `pii.reversible` (only `true` is accepted). Restoration is always enabled; use a tool `redact` policy for irreversible tool-input redaction. See [RC migration and readiness](./docs/rc.1-readiness.md).
+
 Guard-owned failures stop the operation with sanitized errors: `GuardModelError` (`MODEL_UNAVAILABLE`) or `GuardOperationalError` (`AUDIT_UNAVAILABLE`, `VAULT_UNAVAILABLE`). Original errors and causes are not exposed. Tool policy denials still use `GuardToolError`. Model hooks return a blocked response, which Genkit generation raises as `FAILED_PRECONDITION` with a blocked response in its details. Provider and tool execution errors propagate unchanged.
 
-Audit storage runs before the callback and execution. A callback failure can occur after a decision was saved. Vault restoration or response scanning can fail after a model or tool has run; do not automatically retry side-effecting tools. No operation is rolled back. See [v0.2.0 release notes](./docs/release-3.md).
+Audit storage runs before the callback and execution. A callback failure can occur after a decision was saved. Vault restoration or response scanning can fail after a model or tool has run; do not automatically retry side-effecting tools. No operation is rolled back. See [RC release notes](./docs/release-rc.1.md).
+
+The rc.1 concurrency-10 test measured a 7.89-second generation p95 with zero errors. Its 3,107 MiB final median RSS exceeded the proposed relative-growth criterion; this is a documented RC limitation, with long-term memory validation required before stable v1. See the benchmark report for workload and hardware scope.
+
+The default memory vault has no TTL or capacity bound. Redis TTL applies to whole hashes and is refreshed by writes; continuous traffic can retain the shared token index indefinitely. Monitor token count and memory, and use a custom retention adapter when you need hard age/capacity bounds. See [measurements, methodology and deployment constraints](./docs/benchmarks.md).
 
 ## Try it and explore the examples
 
@@ -358,20 +366,16 @@ The tool-controls demo uses the local build. Run `npm install` and `npm run buil
 npx tsx src/tool-controls.ts
 ```
 
-## Roadmap
+## Release status
 
-- **v0.0.14:** shared model configuration, custom PII labels, tool policies and versioned decision events.
-- **v0.1.0:** persistent decision logging and explicit fallback-model behavior.
-- **v0.2.0:** framework compatibility matrix, security hardening and operational error handling.
-- **v0.3.0 (next):** storage correctness, package validation and operational readiness; see the [stability checklist](./docs/stability-v0.3.0.md).
-- **v1.0.0-rc.1:** release candidate and public API freeze; subsequent candidates focus on fixes and validation.
-- **Later:** SQLite vault and memory compaction integration, outside the release candidate scope.
+**v1.0.0-rc.1 is published on npm.** It remains a prerelease; stable v1.0.0 validation is tracked in the [stable release checklist](./docs/stable-readiness.md). See [readiness and migration](./docs/rc.1-readiness.md), [release notes](./docs/release-rc.1.md), [API contract](./docs/api.md), and [benchmarks](./docs/benchmarks.md).
 
+Stable v1 follows the representative production soak and memory-stability review. SQLite vault and memory compaction remain outside this candidate's scope.
 ## Contributing
 
 Issues, pull requests, model evaluations and security reviews are welcome. For local real-model checks in the separate consumer app, see [independent testing](./docs/independent-testing.md) and run `npm run test:independent`.
 
-Run `npm test` for the deterministic suite, `npm run test:package` for clean consumer validation, and `npm run test:redis` for real Redis integration. See the [v0.3.0 migration notes](./docs/release-4.md) for TTL adapter requirements and earlier configuration validation.
+Run `npm test` for the deterministic suite, `npm run test:package` for clean consumer validation, and `npm run test:redis` for real Redis integration. See the [RC migration notes](./docs/release-rc.1.md) for TTL adapter requirements and earlier configuration validation.
 
 ## License
 

@@ -1,13 +1,36 @@
-models/
-*.onnx
-*.bin
-*.json
-.cache/
-node_modules/
-dist/models/
-example-flow/
-example/
-coverage/
-scripts/test-release*.js
-scripts/publish-wiki.js
-scripts/test-publish-wiki.js
+# package.json files is the primary publish allowlist.
+# Only the runtime model downloader may ship from scripts/.
+/scripts/*
+!/scripts/download-model.js
+
+# Source, documentation and development tooling
+/src/
+/docs/
+/example/
+/example-flow/
+/.github/
+/.agents/
+/.codex/
+/.vscode/
+/.idea/
+/.git/
+/guard.config.ts
+/tsconfig*.json
+/package-lock.json
+
+# Models, caches, local configuration and generated test output
+/models/
+/dist/models/
+/node_modules/
+/.cache/
+/.npm/
+/coverage/
+/test-results/
+/logs/
+.env
+.env.*
+*.log
+*.tgz
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
