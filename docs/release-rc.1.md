@@ -1,6 +1,6 @@
 # v1.0.0-rc.1 release candidate
 
-Prepared locally on 2 November 2026; not yet published or tagged.
+Prepared on 2 November 2026 and published to npm. Registry metadata was verified on 3 November 2026; its integrity matches the validated final archive. A Git release tag has not been verified. See the [publication record](./validation/rc-2026-11-02/npm-publication.json).
 
 The candidate freezes root runtime exports, configuration defaults, decision schema
 string version `"1"` and existing infrastructure error codes. The root export
@@ -30,6 +30,5 @@ inherited findings are recorded separately under the user's release-policy
 decision; their presence alone is not a guard-owned release blocker. A clean
 library-only graph does not clear an application's complete dependency graph.
 
-See [readiness](./rc.1-readiness.md) for exact validation status. Publication uses
-`npm publish --tag rc --access public` only after required validation completes.
+See [readiness](./rc.1-readiness.md) for exact validation status. The registry currently points `latest` to rc.1; consumers should pin the candidate explicitly. Future candidates should use the `rc` distribution tag.
 Stable v1 follows the accepted 24-hour production soak without release blockers.

@@ -1,0 +1,10 @@
+{
+  "verifiedOn": "2026-11-03",
+  "source": "https://registry.npmjs.org/@intflows%2fgenkit-guard/1.0.0-rc.1",
+  "version": "1.0.0-rc.1",
+  "integrity": "sha512-Ze9Ar4ZHptZNUw/nFKBdvKb34RDTIMCXM5H61xN5oy8YIoxx/LoaFNj3YpnzFEkEX891T58xxgC/J+xHJ4Bb5g==",
+  "matchesValidatedFinalArchive": true,
+  "observedDistTags": { "alpha": "0.0.9-alpha.1", "latest": "1.0.0-rc.1" },
+  "gitReleaseTagVerified": false,
+  "note": "Publication performed by the maintainer; this record verifies registry metadata, not stable release acceptance. Historical dry-run reports remain unchanged."
+}

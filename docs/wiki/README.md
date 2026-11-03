@@ -1,6 +1,6 @@
 # Wiki source
 
-This is the single source folder for the Genkit Guard wiki. Update these pages in place; release history belongs in the release notes, not version-specific wiki folders. The current content describes the prepared, unpublished v1.0.0-rc.1 candidate.
+This is the single source folder for the Genkit Guard wiki. Update these pages in place; release history belongs in the release notes, not version-specific wiki folders. The current content describes the published v1.0.0-rc.1 candidate.
 
 - [1.-Home](1.-Home.md)
 - [2.-Architecture](2.-Architecture.md)

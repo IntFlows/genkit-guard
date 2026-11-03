@@ -1,9 +1,11 @@
 # v1.0.0-rc.1 readiness
 
-`1.0.0-rc.1` is prepared locally and **has not been published or tagged**.
-Local validation is complete with the documented RC memory limitation accepted
-by the user on 2 November 2026. Remote validation and publication still require
-authenticated GitHub and npm access.
+`1.0.0-rc.1` is published on npm. Registry metadata verified on 3 November
+2026 matches the validated final archive integrity. The registry's `latest` tag
+currently points to rc.1; this is still a prerelease, not stable-v1 acceptance.
+The specific RC memory limitation was accepted on 2 November 2026.
+See the [publication record](./validation/rc-2026-11-02/npm-publication.json)
+and [stable release checklist](./stable-readiness.md).
 
 ## Validated release scope
 
@@ -23,7 +25,7 @@ authenticated GitHub and npm access.
 | Publish dry run | Pass, public access with `rc` tag | [package metadata](./validation/rc-2026-11-02/final-artifact.json) |
 
 The matrix reports identify a base commit and dirty working-tree source manifest;
-they are local evidence, not successful remote CI on an immutable release commit.
+they are local evidence. Remote CI for commit `29eea9218d91b505a0c3c9512112d4ad88d2da71` also passed; see the [CI record](./validation/rc-2026-11-02/github-ci.json). Later commits require fresh CI.
 The benchmark used cached MiniLM/privacy-filter q4 inference, Redis 8.10.2 and a
 controlled Genkit provider. No live Gemini or PII-recall claim is made.
 
@@ -69,12 +71,14 @@ alone blocking this release. Direct/shared library paths, unclassified findings
 and audit execution errors still fail CI. The complete consumer graph is not
 called clean. No forced Genkit downgrade or cross-major override was applied.
 
-## Remaining remote/publication steps
+## Remaining release verification
 
-1. Authenticate GitHub in WSL and configure Git credentials. Git push currently cannot obtain a username; the configured `gh` account returns HTTP 401. Anonymous public CI metadata is readable, but it cannot validate unpushed candidate changes.
-2. Commit/review the final changes, push the candidate, and require passing `RC required checks` for that exact commit, including Redis 7. Configure branch protection separately if needed.
-3. Authenticate npm: `npm whoami` currently returns HTTP 401. Publish the reviewed archive with `--tag rc --access public`, keeping `latest` on the stable release.
-4. Record the published integrity/tag and final CI links. Neither remote publication nor a release tag has been created by this work.
+The npm publication is confirmed; it must not be repeated with the same version.
+Require successful `RC required checks` for the final PR commit after merging
+main. Record the immutable CI links and verify the Git release tag separately.
+The historical local reports remain evidence for their recorded artifacts; they
+are not remote CI evidence for a later commit. Future candidates should use the
+`rc` npm tag. Registry tags do not establish production readiness.
 
 The measured archive and final archive differ only in README documentation; the
 [per-file comparison](./validation/rc-2026-11-02/artifact-comparison.json) verifies

@@ -1,0 +1,43 @@
+{
+  "verifiedOn": "2026-11-03",
+  "commit": "29eea9218d91b505a0c3c9512112d4ad88d2da71",
+  "runUrl": "https://github.com/IntFlows/genkit-guard/actions/runs/41432835216",
+  "jobs": [
+    {
+      "name": "dependency-audit",
+      "conclusion": "success",
+      "html_url": "https://github.com/IntFlows/genkit-guard/actions/runs/41432835216/job/125235385787"
+    },
+    {
+      "name": "compatibility (24, minimum)",
+      "conclusion": "success",
+      "html_url": "https://github.com/IntFlows/genkit-guard/actions/runs/41432835216/job/125235386071"
+    },
+    {
+      "name": "compatibility (22, minimum)",
+      "conclusion": "success",
+      "html_url": "https://github.com/IntFlows/genkit-guard/actions/runs/41432835216/job/125235386073"
+    },
+    {
+      "name": "redis",
+      "conclusion": "success",
+      "html_url": "https://github.com/IntFlows/genkit-guard/actions/runs/41432835216/job/125235386188"
+    },
+    {
+      "name": "compatibility (22, latest)",
+      "conclusion": "success",
+      "html_url": "https://github.com/IntFlows/genkit-guard/actions/runs/41432835216/job/125235386219"
+    },
+    {
+      "name": "compatibility (24, latest)",
+      "conclusion": "success",
+      "html_url": "https://github.com/IntFlows/genkit-guard/actions/runs/41432835216/job/125235386230"
+    },
+    {
+      "name": "RC required checks",
+      "conclusion": "success",
+      "html_url": "https://github.com/IntFlows/genkit-guard/actions/runs/41432835216/job/125236061471"
+    }
+  ],
+  "note": "Original rc.1 commit only; the main-history merge and later documentation commit require fresh CI."
+}

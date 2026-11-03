@@ -19,7 +19,7 @@ Detection is based on patterns and model predictions. It can miss attacks or PII
 
 ## Full setup guide
 
-The following setup targets **v1.0.0-rc.1**, currently prepared locally and unpublished. Once published, install the candidate with compatible Genkit 1.x dependencies; see the [compatibility matrix](./docs/compatibility.md) for tested integration paths.
+The following setup targets **v1.0.0-rc.1**, published on npm as a release candidate. Install it explicitly with compatible Genkit 1.x dependencies; see the [compatibility matrix](./docs/compatibility.md) for tested integration paths.
 
 ### 1. Create the application and install dependencies
 
@@ -368,7 +368,7 @@ npx tsx src/tool-controls.ts
 
 ## Release status
 
-**v1.0.0-rc.1 is prepared locally and unpublished.** See [readiness and migration](./docs/rc.1-readiness.md), [release notes](./docs/release-rc.1.md), [API contract](./docs/api.md), and [benchmarks](./docs/benchmarks.md).
+**v1.0.0-rc.1 is published on npm.** It remains a prerelease; stable v1.0.0 validation is tracked in the [stable release checklist](./docs/stable-readiness.md). See [readiness and migration](./docs/rc.1-readiness.md), [release notes](./docs/release-rc.1.md), [API contract](./docs/api.md), and [benchmarks](./docs/benchmarks.md).
 
 Stable v1 follows the representative production soak and memory-stability review. SQLite vault and memory compaction remain outside this candidate's scope.
 ## Contributing
